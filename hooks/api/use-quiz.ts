@@ -36,15 +36,60 @@ export function useQuiz(id: string) {
 export function useCreateQuiz() {
     const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: async (payload: CreateQuizInput) => {
-            const { data } = await api.post<Quiz>("/quizzes", payload);
-            return data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: quizKeys.all });
-        },
-    });
+    const createQuiz = async (
+        payload: CreateQuizInput,
+        callbacks: {
+            onStep?: (step: number) => void;
+            onSuccess?: (quizId: string) => void;
+            onError?: (message: string) => void;
+        }
+    ) => {
+        const response = await fetch("/api/quizzes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok || !response.body) {
+            callbacks.onError?.("Failed to start quiz creation");
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let eventType = "";
+        let eventData = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+
+            for (const line of chunk.split("\n")) {
+                if (line.startsWith("event: ")) {
+                    eventType = line.slice(7).trim();
+                } else if (line.startsWith("data: ")) {
+                    eventData = line.slice(6).trim();
+                } else if (line === "" && eventType && eventData) {
+                    const data = JSON.parse(eventData);
+
+                    if (eventType === "progress") callbacks.onStep?.(data.step);
+                    if (eventType === "done") {
+                        queryClient.invalidateQueries({ queryKey: quizKeys.all });
+                        callbacks.onSuccess?.(data.quizId);
+                    }
+                    if (eventType === "error") callbacks.onError?.(data.message);
+
+                    eventType = "";
+                    eventData = "";
+                }
+            }
+        }
+    };
+
+    return { createQuiz };
 }
 
 export function useUpdateQuiz(id: string) {
@@ -74,5 +119,42 @@ export function useDeleteQuiz() {
             queryClient.invalidateQueries({ queryKey: quizKeys.all });
             queryClient.removeQueries({ queryKey: quizKeys.detail(id) });
         },
+    });
+}
+
+// ─── Conversation Keys ────────────────────────────────────────────────────────
+
+export const conversationKeys = {
+    byQuiz: (quizId: string) => ["conversations", "quiz", quizId] as const,
+    detail: (id: string) => ["conversations", id] as const,
+};
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+// types.ts
+export type ConversationWithMessages = {
+    id: string;
+    quizId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    quiz: {
+        id: string;
+        title: string;
+    };
+    messages: {
+        id: string;
+        role: "user" | "assistant" | "tool";
+        content: unknown; // CoreMessage content shape
+        createdAt: Date;
+    }[];
+};
+
+export function useQuizConversation(quizId: string) {
+    return useQuery({
+        queryKey: conversationKeys.byQuiz(quizId),
+        queryFn: async () => {
+            const { data } = await api.get<ConversationWithMessages>(`/quizzes/${quizId}/conversation`);
+            return data;
+        },
+        enabled: !!quizId,
     });
 }

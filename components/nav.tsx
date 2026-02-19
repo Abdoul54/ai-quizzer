@@ -29,9 +29,11 @@ export function Nav({
         <SidebarGroup>
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarMenu>
-                {nav.map((item) => (
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip={item.title} onClick={() => router.push(item.url)}>
+                {nav.map((item, idx) => (
+                    <SidebarMenuItem key={idx}>
+                        <SidebarMenuButton tooltip={item.title} onClick={() => {
+                            router.push(item.url)
+                        }}>
                             {item.icon && <item.icon />}
                             <span>{item.title}</span>
                         </SidebarMenuButton>

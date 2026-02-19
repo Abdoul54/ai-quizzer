@@ -14,7 +14,8 @@ export async function POST(req: Request) {
 
         if (file) {
             const uint8 = new Uint8Array(await file.arrayBuffer());
-            text = await extractPdfText(uint8);
+            const { text: extracted, extractor } = await extractPdfText(uint8);
+            text = extracted;
         }
 
         if (!text || text.trim().length === 0) {
@@ -24,7 +25,10 @@ export async function POST(req: Request) {
         // 1. insert parent document
         const [document] = await db
             .insert(documents)
-            .values({ fileName: file?.name ?? "manual-text" })
+            .values({
+                fileName: file?.name ?? "manual-text",
+                fileType: file?.type ?? "text/plain",
+            })
             .returning({ id: documents.id });
 
         // 2. embed and insert chunks linked to document

@@ -18,6 +18,7 @@ import {
 export const languageEnum = pgEnum("language", languageCodes);
 export const questionTypeEnum = pgEnum("question_type", ["true_false", "single_choice", "multiple_choice"]);
 export const quizDifficultyEnum = pgEnum("quiz_difficulty", ["easy", "medium", "hard"]);
+export const quizStatusEnum = pgEnum("quiz_status", ["draft", "published", "archived"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "tool"]);
 
 
@@ -133,17 +134,33 @@ export const quiz = pgTable("quiz", {
     topic: text("topic"),
     questionCount: integer("question_count"),
     difficulty: quizDifficultyEnum("difficulty"),
-    // Generation input parameter — which question types were requested
-    questionTypes: text("question_types"),
+    status: quizStatusEnum("status").default("draft").notNull(),
+    questionTypes: questionTypeEnum("question_types").array().default([]),
     language: languageEnum("language").default("en"),
     additionalPrompt: text("additional_prompt"),
     architecture: text("architecture"),
+    documentIds: uuid("document_ids").array().default([]),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),
 });
+
+export const draft = pgTable("draft", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    quizId: uuid("quiz_id")
+        .notNull()
+        .references(() => quiz.id, { onDelete: "cascade" }),
+    content: jsonb("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+        .defaultNow()
+        .$onUpdate(() => new Date())
+        .notNull(),
+}, (table) => [
+    index("draft_quizId_idx").on(table.quizId),
+]);
 
 export const question = pgTable("question", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -177,9 +194,6 @@ export const documents = pgTable("documents", {
     id: uuid("id").defaultRandom().primaryKey(),
     fileName: text("file_name").notNull(),
     fileType: text("file_type").notNull(),
-    quizId: uuid("quiz_id")
-        .notNull()
-        .references(() => quiz.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -219,13 +233,10 @@ export const message = pgTable("message", {
 // ─── Quiz Relations ───────────────────────────────────────────────────────────
 
 export const quizRelations = relations(quiz, ({ one, many }) => ({
-    user: one(user, {
-        fields: [quiz.userId],
-        references: [user.id],
-    }),
+    user: one(user, { fields: [quiz.userId], references: [user.id] }),
     questions: many(question),
-    uploadedDocuments: many(documents),
     conversations: many(conversations),
+    drafts: many(draft),
 }));
 
 export const questionRelations = relations(question, ({ one, many }) => ({
@@ -243,11 +254,7 @@ export const optionsRelations = relations(options, ({ one }) => ({
     }),
 }));
 
-export const documentsRelations = relations(documents, ({ one, many }) => ({
-    quiz: one(quiz, {
-        fields: [documents.quizId],
-        references: [quiz.id],
-    }),
+export const documentsRelations = relations(documents, ({ many }) => ({
     chunks: many(documentChunks),
 }));
 
@@ -271,4 +278,8 @@ export const messageRelations = relations(message, ({ one }) => ({
         fields: [message.conversationId],
         references: [conversations.id],
     }),
+}));
+
+export const draftRelations = relations(draft, ({ one }) => ({
+    quiz: one(quiz, { fields: [draft.quizId], references: [quiz.id] }),
 }));

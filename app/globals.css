@@ -28,6 +28,16 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -61,11 +71,22 @@
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
+
+  --success: oklch(0.72 0.19 145);
+  --success-foreground: oklch(0.98 0 0);
+
+  --warning: oklch(0.82 0.17 85);
+  --warning-foreground: oklch(0.98 0 0);
+
+  --info: oklch(0.65 0.16 240);
+  --info-foreground: oklch(0.98 0 0);
+
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -95,6 +116,16 @@
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.62 0.18 145);
+  --success-foreground: oklch(0.98 0 0);
+
+  --warning: oklch(0.75 0.16 85);
+  --warning-foreground: oklch(0.15 0 0);
+
+  --info: oklch(0.6 0.17 240);
+  --info-foreground: oklch(0.98 0 0);
+
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
@@ -126,4 +157,8 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@utility h-sidebar {
+  height: calc(100vh - 155px);
 }

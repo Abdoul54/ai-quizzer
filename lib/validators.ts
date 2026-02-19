@@ -16,9 +16,10 @@ export const createQuizSchema = z.object({
     topic: z.string().max(255).optional(),
     questionCount: z.number().int().min(1).max(100).optional(),
     difficulty: quizDifficultySchema.optional(),
-    questionTypes: z.string().optional(),
+    questionTypes: z.array(questionTypeSchema).optional(),
     language: languageSchema.optional(),
     additionalPrompt: z.string().max(2000).optional(),
+    documentIds: z.array(z.string()).optional(),
     architecture: z.string().optional(),
 });
 

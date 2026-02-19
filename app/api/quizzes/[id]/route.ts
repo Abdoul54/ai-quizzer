@@ -31,7 +31,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
                     options: true,
                 },
             },
-            uploadedDocuments: true,
             conversations: {
                 with: {
                     messages: true,
