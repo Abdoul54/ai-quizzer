@@ -3,8 +3,16 @@ import { embed } from "ai";
 import { db } from "@/db";
 import { documents, documentChunks } from "@/db/schema";
 import { extractPdfText } from "@/lib/pdf";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export async function POST(req: Request) {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File | null;
@@ -56,12 +64,31 @@ export async function POST(req: Request) {
     }
 }
 
-function chunkText(text: string, size: number): string[] {
+function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
     const chunks: string[] = [];
-    let i = 0;
-    while (i < text.length) {
-        chunks.push(text.slice(i, i + size));
-        i += size;
+
+    // Normalize whitespace
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // Split into sentences — handles ". ", "? ", "! " and newlines
+    const sentences = normalized.split(/(?<=[.?!])\s+|\n{2,}/);
+
+    let current = '';
+
+    for (const sentence of sentences) {
+        if ((current + ' ' + sentence).trim().length <= chunkSize) {
+            current = current ? `${current} ${sentence}` : sentence;
+        } else {
+            if (current) chunks.push(current.trim());
+
+            // Carry the overlap from the end of the previous chunk
+            const words = current.split(' ');
+            const overlapText = words.slice(-Math.floor(overlap / 5)).join(' ');
+            current = overlapText ? `${overlapText} ${sentence}` : sentence;
+        }
     }
+
+    if (current.trim()) chunks.push(current.trim());
+
     return chunks;
 }

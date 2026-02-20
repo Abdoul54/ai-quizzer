@@ -12,25 +12,36 @@ Use this whenever user asks about documents,
 files, knowledge base, or stored info.
 `,
     inputSchema: z.object({
-        query: z.string()
+        query: z.string(),
+        documentIds: z.array(z.string().uuid()).optional(),
     }),
 
-    execute: async ({ query }) => {
-        console.log("TOOL searchDocs CALLED with:", query);
+    execute: async ({ query, documentIds }) => {
+        console.log("TOOL searchDocs CALLED with:", query, documentIds);
 
         // 1. embed user query
         const { embedding } = await embed({
             model: openai.embedding("text-embedding-3-small"),
-            value: query
+            value: query,
         });
 
-        // 2. semantic search
-        const result = await db.execute(sql`
-  SELECT content, file_name
-  FROM documents
-  ORDER BY embedding <-> ${JSON.stringify(embedding)}::vector
-  LIMIT 5
-`);
+        // 2. semantic search scoped to provided documentIds (if any)
+        const result = documentIds?.length
+            ? await db.execute(sql`
+                SELECT dc.content, d.file_name
+                FROM document_chunks dc
+                JOIN documents d ON dc.document_id = d.id
+                WHERE dc.document_id = ANY(${documentIds}::uuid[])
+                ORDER BY dc.embedding <-> ${JSON.stringify(embedding)}::vector
+                LIMIT 5
+              `)
+            : await db.execute(sql`
+                SELECT dc.content, d.file_name
+                FROM document_chunks dc
+                JOIN documents d ON dc.document_id = d.id
+                ORDER BY dc.embedding <-> ${JSON.stringify(embedding)}::vector
+                LIMIT 5
+              `);
 
         if (!result.rows.length) {
             return "No relevant documents found.";
@@ -40,5 +51,5 @@ files, knowledge base, or stored info.
         return result.rows
             .map(r => `[${r.file_name}]\n${r.content}`)
             .join("\n\n");
-    }
+    },
 });

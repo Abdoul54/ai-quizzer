@@ -46,6 +46,7 @@ import {
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
 import { Progress } from "../ui/progress";
 import { useRouter } from "next/navigation";
+import StepProgress from "../step-progress";
 
 const filesIcons: Record<string, React.ReactElement> = {
     // PDF / text
@@ -95,21 +96,31 @@ const filesIcons: Record<string, React.ReactElement> = {
     "default": <File className="h-4 w-4" />
 };
 
-const steps: { title: string; Icon: LucideIcon }[] = [
-    {
-        title: "Saving Quiz Details",
-        Icon: Database
-    },
-    {
-        title: "Designing Quiz Structure",
-        Icon: Brain
-    },
-    {
-        title: "Generating Questions",
-        Icon: Hammer
-    }
-];
-
+const steps: {
+    preloadTitle?: string;
+    loadTitle?: string;
+    postLoadTitle?: string;
+    Icon: LucideIcon
+}[] = [
+        {
+            preloadTitle: "Analyze Quiz Details",
+            loadTitle: "Saving Quiz Details",
+            postLoadTitle: "Quiz Details Saved",
+            Icon: Database
+        },
+        {
+            preloadTitle: "Design Quiz Structure",
+            loadTitle: "Designing Quiz Structure",
+            postLoadTitle: "Quiz Structure Designed",
+            Icon: Brain
+        },
+        {
+            preloadTitle: "Generate Questions",
+            loadTitle: "Generating Quiz Questions",
+            postLoadTitle: "Quiz Questions Generated",
+            Icon: Hammer
+        }
+    ];
 
 const NewQuizDialog = () => {
     const { createQuiz } = useCreateQuiz();
@@ -123,7 +134,6 @@ const NewQuizDialog = () => {
     const [documents, setDocuments] = useState<{ id: string; name: string; type: string }[]>([]);
     const [uploading, setUploading] = useState(false);
 
-    const step = steps[currentStep];
 
     const form = useForm<CreateQuizInput>({
         resolver: zodResolver(createQuizSchema),
@@ -185,6 +195,8 @@ const NewQuizDialog = () => {
         );
     };
 
+    console.log(currentStep);
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -198,15 +210,7 @@ const NewQuizDialog = () => {
                 {
                     submitting
                         ? <div className="flex items-center justify-center">
-                            <Empty className="h-full w-full">
-                                <EmptyHeader>
-                                    <EmptyMedia variant="icon">
-                                        <step.Icon className="h-10 w-10 animate-pulse" />
-                                    </EmptyMedia>
-                                    <EmptyTitle>{step.title}</EmptyTitle>
-                                    <Progress value={((currentStep + 1) / steps.length) * 100} className="w-full" />
-                                </EmptyHeader>
-                            </Empty>
+                            <StepProgress steps={steps} currentStep={currentStep} />
                         </div>
                         : <form onSubmit={form.handleSubmit(onSubmit)}>
                             <DialogHeader className="mb-4">

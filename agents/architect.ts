@@ -13,16 +13,19 @@ interface QuizUserInput {
 }
 
 export const architect = async (input: QuizUserInput): Promise<string> => {
+    const documentIds = input.documents;
+
     const result = await generateText({
-        model: openai('gpt-4o-mini'),
-        stopWhen: stepCountIs(6), // max 5 searches + 1 final text step
-        toolChoice: 'auto',       // allows the model to stop searching and write
+        model: openai(process.env.ARCHITECT || 'gpt-4o-mini'),
+        stopWhen: stepCountIs(6),
+        toolChoice: 'auto',
         tools: { searchDocs },
         system: `You are an expert instructional designer and quiz architect.
 You have access to a document knowledge base via the searchDocs tool.
 
 RULES:
 - Call searchDocs 3 to 5 times maximum using meaningful topic keywords (NOT document IDs).
+- Always pass the documentIds array to every searchDocs call to scope results to the correct documents.
 - Once you have enough context, stop calling tools and write the architecture.
 - Base the architecture ONLY on what you retrieved.
 
@@ -32,9 +35,9 @@ The architecture must include:
 - Topics and subtopics to cover with suggested distribution
 - Common misconceptions or tricky areas worth testing
 - Clear instructions the quiz builder must follow`,
-        prompt: `Generate a quiz architecture for documents with IDs: ${input.documents.join(', ')}
+        prompt: `Generate a quiz architecture from the following documents.
 
-IMPORTANT: When calling searchDocs, always pass documentIds: [${input.documents.map(id => `"${id}"`).join(', ')}]
+documentIds to pass to every searchDocs call: [${documentIds.map(id => `"${id}"`).join(', ')}]
 
 Quiz preferences:
 - Topic focus: ${input.topic ?? 'derive from the document'}
