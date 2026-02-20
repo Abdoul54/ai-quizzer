@@ -6,7 +6,7 @@ const ListQuizzes = ({ quizzes }: { quizzes: Quiz[] }) => {
     const router = useRouter()
 
     return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
             {quizzes?.map((quiz: Quiz) => (
                 <QuizCard key={quiz?.id} quiz={quiz} action={() => router.push(`/quizzes/${quiz?.id}`)} />
             ))}
