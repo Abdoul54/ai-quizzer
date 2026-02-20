@@ -28,7 +28,7 @@ const Page = () => {
             <div className="flex-1 flex gap-2">
                 <Card className="flex-1">
                     <CardContent className="h-full">
-                        <Chat />
+                        <Chat quizId={String(id)} />
                     </CardContent>
                 </Card>
                 <Card className="flex-1 bg-warning p-2">

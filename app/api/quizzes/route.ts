@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
                 const architecture = await architect({
                     documents: parsed.data.documentIds ?? [],
                     topic: parsed.data.topic,
-                    questionCount: parsed.data.questionCount,
-                    difficulty: parsed.data.difficulty,
-                    questionTypes: parsed.data.questionTypes,
+                    questionCount: parsed.data.questionCount || 10,
+                    difficulty: parsed.data.difficulty || "medium",
+                    questionTypes: parsed.data.questionTypes || ["true_false", "single_choice", "multiple_choice"],
                     language: parsed.data.language,
                     additionalPrompt: parsed.data.additionalPrompt,
                 });

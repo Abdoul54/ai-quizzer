@@ -13,7 +13,7 @@ const Preview = ({ id }: { id: string }) => {
     return (
         <div className="flex flex-col items-center  h-full">
             <div className="w-full flex justify-end">
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                     <Button
                         variant="outline"
                         size="icon"
@@ -22,6 +22,11 @@ const Preview = ({ id }: { id: string }) => {
                     >
                         <ChevronLeft />
                     </Button>
+                    {questions.length > 0 && (
+                        <span className="font-sans font-bold">
+                            {currrentQuestion + 1}/{questions.length}
+                        </span>
+                    )}
                     <Button
                         variant="outline"
                         size="icon"

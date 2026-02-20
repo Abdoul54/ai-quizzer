@@ -6,6 +6,7 @@ import { quiz } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { retrieveQuizDraft } from "@/lib/tools/retrieve-quiz-draft";
 
 export async function POST(req: Request) {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -33,18 +34,20 @@ export async function POST(req: Request) {
     const result = streamText({
         model: openai("gpt-4o-mini"),
         messages: modelMessages,
-        tools: { searchDocs },
+        tools: { searchDocs, retrieveQuizDraft },
         stopWhen: stepCountIs(5),
         toolChoice: "auto",
         system: `
 You are an AI assistant helping the user refine their quiz.
-You have access to the documents this quiz was built from via the searchDocs tool.
+You have access to:
+- The quiz draft (questions, options, structure) via the retrieveQuizDraft tool.
+- The source documents the quiz was built from via the searchDocs tool.
 
 RULES:
-1. Always pass documentIds: ${JSON.stringify(documentIds)} to every searchDocs call.
-2. For any question about the quiz content or source material, retrieve first using searchDocs.
+1. Whenever the user asks about the quiz questions, structure, or content — ALWAYS call retrieveQuizDraft(quizId: "${quizId}") first before responding.
+2. When the user asks about source material or wants to verify accuracy, call searchDocs with documentIds: ${JSON.stringify(documentIds)}.
 3. If nothing is found in the documents, say so clearly.
-4. Never answer from your own knowledge when documents are available.
+4. Never answer from your own knowledge when tools are available.
 `,
     });
 
