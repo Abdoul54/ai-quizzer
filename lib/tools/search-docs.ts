@@ -13,11 +13,15 @@ files, knowledge base, or stored info.
 `,
     inputSchema: z.object({
         query: z.string(),
-        documentIds: z.array(z.string().uuid()).optional(),
+        documentIds: z.array(z.string().uuid()),
     }),
 
     execute: async ({ query, documentIds }) => {
         console.log("TOOL searchDocs CALLED with:", query, documentIds);
+
+        if (!documentIds.length) {
+            return "No documents available to search.";
+        }
 
         // 1. embed user query
         const { embedding } = await embed({
@@ -25,23 +29,15 @@ files, knowledge base, or stored info.
             value: query,
         });
 
-        // 2. semantic search scoped to provided documentIds (if any)
-        const result = documentIds?.length
-            ? await db.execute(sql`
-                SELECT dc.content, d.file_name
-                FROM document_chunks dc
-                JOIN documents d ON dc.document_id = d.id
-                WHERE dc.document_id = ANY(${documentIds}::uuid[])
-                ORDER BY dc.embedding <-> ${JSON.stringify(embedding)}::vector
-                LIMIT 5
-              `)
-            : await db.execute(sql`
-                SELECT dc.content, d.file_name
-                FROM document_chunks dc
-                JOIN documents d ON dc.document_id = d.id
-                ORDER BY dc.embedding <-> ${JSON.stringify(embedding)}::vector
-                LIMIT 5
-              `);
+        // 2. semantic search scoped to provided documentIds
+        const result = await db.execute(sql`
+            SELECT dc.content, d.file_name
+            FROM document_chunks dc
+            JOIN documents d ON dc.document_id = d.id
+            WHERE dc.document_id = ANY(${documentIds}::uuid[])
+            ORDER BY dc.embedding <-> ${JSON.stringify(embedding)}::vector
+            LIMIT 5
+        `);
 
         if (!result.rows.length) {
             return "No relevant documents found.";

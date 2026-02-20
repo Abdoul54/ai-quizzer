@@ -1,6 +1,7 @@
 'use client'
 
 import Chat from "@/components/chat"
+import Preview from "@/components/preview"
 import { Card, CardContent } from "@/components/ui/card"
 import { useQuizConversation } from "@/hooks/api/use-quiz"
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs"
@@ -30,7 +31,8 @@ const Page = () => {
                         <Chat />
                     </CardContent>
                 </Card>
-                <Card className="flex-1 bg-yellow-500">
+                <Card className="flex-1 bg-warning p-2">
+                    <Preview id={String(id)} />
                 </Card>
             </div>
         </div>

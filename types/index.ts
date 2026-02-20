@@ -10,6 +10,7 @@ import type {
     documentChunks,
     conversations,
     message,
+    draft,
 } from "@/db/schema";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@ export type NewConversation = InferInsertModel<typeof conversations>;
 export type Message = InferSelectModel<typeof message>;
 export type NewMessage = InferInsertModel<typeof message>;
 
+export type Draft = InferSelectModel<typeof draft>;
+
+
 // ─── Nested / Relational ──────────────────────────────────────────────────────
 
 export type OptionWithQuestion = Option & {
@@ -60,7 +64,15 @@ export type MessageWithConversation = Message & {
     conversation: Conversation;
 };
 
-export type ConversationWithMessages = Conversation & {
+export type ConversationWithMessages = {
+    id: string;
+    quizId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    quiz: {
+        id: string;
+        title: string;
+    };
     messages: Message[];
 };
 
@@ -68,6 +80,12 @@ export type QuizWithRelations = Quiz & {
     questions: QuestionWithOptions[];
     uploadedDocuments: Document[];
     conversations: ConversationWithMessages[];
+};
+
+export type DraftWithQuestions = Draft & {
+    content: {
+        questions: QuestionWithOptions[];
+    };
 };
 
 // ─── API Payloads ─────────────────────────────────────────────────────────────

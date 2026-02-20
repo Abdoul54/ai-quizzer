@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
-import type { QuizWithRelations, Quiz } from "@/types";
+import type { QuizWithRelations, Quiz, ConversationWithMessages, DraftWithQuestions } from "@/types";
 import type { CreateQuizInput, UpdateQuizInput } from "@/lib/validators";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -131,28 +131,33 @@ export const conversationKeys = {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 // types.ts
-export type ConversationWithMessages = {
-    id: string;
-    quizId: string;
-    createdAt: Date;
-    updatedAt: Date;
-    quiz: {
-        id: string;
-        title: string;
-    };
-    messages: {
-        id: string;
-        role: "user" | "assistant" | "tool";
-        content: unknown; // CoreMessage content shape
-        createdAt: Date;
-    }[];
-};
+
 
 export function useQuizConversation(quizId: string) {
     return useQuery({
         queryKey: conversationKeys.byQuiz(quizId),
         queryFn: async () => {
             const { data } = await api.get<ConversationWithMessages>(`/quizzes/${quizId}/conversation`);
+            return data;
+        },
+        enabled: !!quizId,
+    });
+}
+
+// ─── Draft Keys ───────────────────────────────────────────────────────────────
+
+export const draftKeys = {
+    latestByQuiz: (quizId: string) => ["drafts", "quiz", quizId, "latest"] as const,
+};
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+
+
+export function useLatestDraft(quizId: string) {
+    return useQuery({
+        queryKey: draftKeys.latestByQuiz(quizId),
+        queryFn: async () => {
+            const { data } = await api.get<DraftWithQuestions>(`/quizzes/${quizId}/draft`);
             return data;
         },
         enabled: !!quizId,

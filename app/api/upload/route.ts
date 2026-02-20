@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
         if (file) {
             const uint8 = new Uint8Array(await file.arrayBuffer());
-            const { text: extracted, extractor } = await extractPdfText(uint8);
+            const { text: extracted } = await extractPdfText(uint8);
             text = extracted;
         }
 
@@ -30,10 +30,11 @@ export async function POST(req: Request) {
             return Response.json({ error: "No text extracted" }, { status: 400 });
         }
 
-        // 1. insert parent document
+        // 1. insert parent document — scoped to the current user
         const [document] = await db
             .insert(documents)
             .values({
+                userId: session.user.id,
                 fileName: file?.name ?? "manual-text",
                 fileType: file?.type ?? "text/plain",
             })
@@ -67,10 +68,7 @@ export async function POST(req: Request) {
 function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
     const chunks: string[] = [];
 
-    // Normalize whitespace
     const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    // Split into sentences — handles ". ", "? ", "! " and newlines
     const sentences = normalized.split(/(?<=[.?!])\s+|\n{2,}/);
 
     let current = '';
@@ -81,7 +79,6 @@ function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
         } else {
             if (current) chunks.push(current.trim());
 
-            // Carry the overlap from the end of the previous chunk
             const words = current.split(' ');
             const overlapText = words.slice(-Math.floor(overlap / 5)).join(' ');
             current = overlapText ? `${overlapText} ${sentence}` : sentence;

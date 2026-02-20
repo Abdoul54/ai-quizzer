@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
                 });
                 await db.update(quiz).set({ architecture }).where(eq(quiz.id, created.id));
 
+                console.log(architecture);
+
                 // Step 2 — Builder agent
                 send("progress", { step: 2 });
                 await builder({ quizId: created.id, architecture });

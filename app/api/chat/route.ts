@@ -1,42 +1,50 @@
 import { convertToModelMessages, stepCountIs, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { searchDocs } from "@/lib/tools/search-docs";
+import { db } from "@/db";
+import { quiz } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export async function POST(req: Request) {
-    const { messages } = await req.json();
+    const session = await auth.api.getSession({ headers: await headers() });
 
-    const modelMessages = await convertToModelMessages(messages); // FIX
+    if (!session) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { messages, quizId } = await req.json();
+
+    // Fetch the quiz to get its scoped documentIds
+    const found = await db.query.quiz.findFirst({
+        where: and(eq(quiz.id, quizId), eq(quiz.userId, session.user.id)),
+        columns: { documentIds: true },
+    });
+
+    if (!found) {
+        return Response.json({ error: "Quiz not found" }, { status: 404 });
+    }
+
+    const documentIds = found.documentIds ?? [];
+
+    const modelMessages = await convertToModelMessages(messages);
 
     const result = streamText({
         model: openai("gpt-4o-mini"),
         messages: modelMessages,
-
-        tools: {
-            searchDocs,
-        },
-
+        tools: { searchDocs },
         stopWhen: stepCountIs(5),
         toolChoice: "auto",
-
         system: `
-You are an AI assistant connected to a document knowledge base.
+You are an AI assistant helping the user refine their quiz.
+You have access to the documents this quiz was built from via the searchDocs tool.
 
-CRITICAL RULES:
-
-1. You MUST call the searchDocs tool for ANY question related to:
-   - documents
-   - pdfs
-   - uploaded files
-   - project info
-   - MVP
-   - anything that may exist in knowledge base
-
-2. NEVER answer from your own knowledge if documents exist.
-3. ALWAYS retrieve first using searchDocs.
-4. If tool returns context → answer using ONLY that.
-5. If nothing found → say "No info found in documents".
-
-Do not skip retrieval.
+RULES:
+1. Always pass documentIds: ${JSON.stringify(documentIds)} to every searchDocs call.
+2. For any question about the quiz content or source material, retrieve first using searchDocs.
+3. If nothing is found in the documents, say so clearly.
+4. Never answer from your own knowledge when documents are available.
 `,
     });
 
