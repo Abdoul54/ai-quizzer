@@ -25,6 +25,7 @@
     "@streamdown/mermaid": "^1.0.2",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.90.21",
+    "@xapi/xapi": "^3.0.2",
     "@xyflow/react": "^12.10.1",
     "ai": "^6.0.94",
     "ansi-to-react": "^6.2.6",

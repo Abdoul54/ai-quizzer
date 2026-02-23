@@ -2,20 +2,50 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Item, ItemHeader } from "@/components/ui/item";
+import { useSendXapi } from "@/hooks/api/use-send-xapi";
 import { useTakeQuiz } from "@/hooks/api/use-take-quiz";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useSession } from "@/lib/auth-client";
+import { useEffect, useState } from "react";
 import { use } from "react";
 
 const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const { id } = use(params);
+    const { data } = useSession()
     const { data: quiz, isLoading, error } = useTakeQuiz(id);
+    const { mutate: sendStatement } = useSendXapi();
 
     const [current, setCurrent] = useState(0);
     const [answers, setAnswers] = useState<Record<number, string[]>>({});
     const [submitted, setSubmitted] = useState(false);
+    const [registration] = useState(() => crypto.randomUUID());
+    const [startedAt] = useState(() => Date.now());
+
+    useEffect(() => {
+        if (!quiz || !data?.user) return;
+
+        sendStatement({
+            actor: {
+                name: data.user.name,
+                mbox: `mailto:${data.user.email}`,
+            },
+            verb: {
+                id: "http://adlnet.gov/expapi/verbs/initialized",
+                display: { "en-US": "initialized" },
+            },
+            object: {
+                id: `http://localhost:3000/quiz/${quiz.id}`,
+                definition: {
+                    name: { "en-US": quiz.title },
+                },
+            },
+            context: {
+                registration,
+            },
+        });
+    }, [quiz, data, sendStatement, registration]);
+
 
     if (isLoading) return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Loading quiz...</div>;
     if (error) return <div className="flex items-center justify-center h-screen text-sm text-destructive">Failed to load quiz.</div>;
@@ -30,14 +60,46 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     function handleSelect(optionText: string) {
         if (submitted) return;
+
         setAnswers((prev) => {
-            const current_sel = prev[current] ?? [];
+            const currentSel = prev[current] ?? [];
+            let next: string[];
+
             if (q.questionType === "single_choice" || q.questionType === "true_false") {
-                return { ...prev, [current]: [optionText] };
+                next = [optionText];
+            } else {
+                next = currentSel.includes(optionText)
+                    ? currentSel.filter(o => o !== optionText)
+                    : [...currentSel, optionText];
             }
-            const next = current_sel.includes(optionText)
-                ? current_sel.filter((o: string) => o !== optionText)
-                : [...current_sel, optionText];
+
+            // send xapi AFTER computing next state
+            sendStatement({
+                actor: {
+                    name: data?.user?.name,
+                    mbox: `mailto:${data?.user?.email}`,
+                },
+                verb: {
+                    id: "http://adlnet.gov/expapi/verbs/answered",
+                    display: { "en-US": "answered" },
+                },
+                object: {
+                    id: `http://localhost:3000/quiz/${quiz.id}/question/${current}`,
+                    definition: {
+                        name: { "en-US": q.questionText },
+                    },
+                },
+                result: {
+                    response: next.join(","),
+                },
+                context: {
+                    registration,
+                    contextActivities: {
+                        parent: [{ id: `http://localhost:3000/quiz/${quiz.id}` }],
+                    },
+                },
+            });
+
             return { ...prev, [current]: next };
         });
     }
@@ -50,6 +112,46 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
             return acc + (isCorrect ? 1 : 0);
         }, 0);
     }
+
+    const handleSubmit = () => {
+        const score = calcScore();
+        const percentage = Math.round((score / total) * 100);
+        const durationMs = Date.now() - startedAt;
+
+        setSubmitted(true);
+
+        sendStatement({
+            actor: {
+                name: data?.user?.name,
+                mbox: `mailto:${data?.user?.email}`,
+            },
+            verb: {
+                id: "http://adlnet.gov/expapi/verbs/completed",
+                display: { "en-US": "completed" },
+            },
+            object: {
+                id: `http://localhost:3000/quiz/${quiz.id}`,
+                definition: {
+                    name: { "en-US": quiz.title },
+                },
+            },
+            result: {
+                score: {
+                    raw: score,
+                    min: 0,
+                    max: total,
+                    scaled: score / total,
+                },
+                success: percentage >= 70,
+                completion: true,
+                duration: `PT${Math.floor(durationMs / 1000)}S`,
+            },
+            context: {
+                registration,
+            },
+        });
+    };
+
 
     if (submitted) {
         const score = calcScore();
@@ -66,7 +168,6 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     <Card className="w-full max-w-lg">
                         <CardHeader>
                             <CardTitle className="text-2xl">Results</CardTitle>
-                            <CardDescription>{quiz.title}</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-6">
                             <div className="flex flex-col items-center gap-2 py-6">
@@ -86,6 +187,8 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </div>
         );
     }
+
+
     return (
         <div className="flex flex-col items-center h-screen">
             <div className="flex justify-between items-center border w-full px-10 py-4">
@@ -125,7 +228,7 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex justify-between items-center border w-full px-10 py-4">
                 <Button variant="outline" disabled={current === 0} onClick={() => setCurrent((c) => c - 1)}>Previous</Button>
                 {isLast ? (
-                    <Button disabled={!hasAnswer} onClick={() => setSubmitted(true)}>
+                    <Button disabled={!hasAnswer} onClick={handleSubmit}>
                         Submit
                     </Button>
                 ) : (
