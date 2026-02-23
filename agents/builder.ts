@@ -1,6 +1,7 @@
 import { generateText, Output } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/db';
 import { draft } from '@/db/schema';
 
@@ -24,7 +25,7 @@ interface BuilderInput {
 
 const MAX_ATTEMPTS = 3;
 
-export const builder = async ({ quizId, architecture }: BuilderInput) => {
+export const builder = async ({ quizId, architecture }: BuilderInput): Promise<string> => {
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -44,15 +45,26 @@ RULES:
                 prompt: `Build the quiz questions from this architecture:\n\n${architecture}`,
             });
 
-            await db.insert(draft).values({ quizId, content: output });
-            return;
+            const questionsWithIds = output.questions.map(q => ({
+                id: uuidv4(),
+                ...q,
+                options: q.options.map(o => ({
+                    id: uuidv4(),
+                    ...o,
+                })),
+            }));
+
+            const [inserted] = await db
+                .insert(draft)
+                .values({ quizId, content: { questions: questionsWithIds } })
+                .returning({ id: draft.id });
+
+            return inserted.id;
 
         } catch (err) {
             lastError = err;
             console.warn(`Builder attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err);
-
             if (attempt < MAX_ATTEMPTS) {
-                // Exponential backoff: 1s, 2s
                 await new Promise(res => setTimeout(res, 1000 * attempt));
             }
         }

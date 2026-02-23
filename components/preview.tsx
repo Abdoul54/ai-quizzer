@@ -1,11 +1,11 @@
 import { useLatestDraft } from "@/hooks/api/use-quiz";
 import Question from "./question";
 import { Button } from "./ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 const Preview = ({ id }: { id: string }) => {
-    const { data, isLoading, error } = useLatestDraft(id);
+    const { data, isLoading, error, refetch } = useLatestDraft(id);
     const [currrentQuestion, setCurrentQuestion] = useState(0);
     const questions = data?.content?.questions || [];
 
@@ -34,6 +34,13 @@ const Preview = ({ id }: { id: string }) => {
                         onClick={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
                     >
                         <ChevronRight />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => refetch()}
+                    >
+                        <RefreshCw />
                     </Button>
                 </div>
             </div>

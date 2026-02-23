@@ -19,16 +19,36 @@ import {
     PromptInputSubmit,
     PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
+import { draftKeys, useQuizConversation } from "@/hooks/api/use-quiz";
 import { useChat } from "@ai-sdk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
 import { MessageSquare } from "lucide-react";
+import { useEffect } from "react";
 
 const Chat = ({ quizId }: { quizId: string }) => {
-    const { messages, sendMessage, status } = useChat({
+    const { data: conversation } = useQuizConversation(quizId);
+    const queryClient = useQueryClient();
+
+
+    const { messages, sendMessage, setMessages, status } = useChat({
         transport: new DefaultChatTransport({
-            body: { quizId },
-        })
+            api: `/api/quizzes/${quizId}/conversation`,
+        }),
+        onFinish: () => {
+            queryClient.invalidateQueries({ queryKey: draftKeys.latestByQuiz(quizId) });
+        },
     });
+
+    useEffect(() => {
+        if (conversation) {
+            setMessages(conversation?.messages.map((m) => ({
+                id: m.id,
+                role: m.role as "user" | "assistant",
+                parts: Array.isArray(m.content) ? m.content : [{ type: "text", text: String(m.content) }],
+            })) ?? [])
+        }
+    }, [conversation, setMessages])
 
     const handleSubmit = ({ text }: { text?: string }) => {
         if (!text?.trim()) return;

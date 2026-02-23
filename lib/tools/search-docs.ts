@@ -1,35 +1,29 @@
-import { tool } from "ai";
-import { z } from "zod";
-import { embed } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { embed } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { sql } from 'drizzle-orm';
+import { db } from '@/db';
 
 export const searchDocs = tool({
-    description: `
-Search the knowledge base semantically.
-Use this whenever user asks about documents,
-files, knowledge base, or stored info.
-`,
+    description:
+        'Semantically searches the knowledge base for specific concepts or topics within the provided documents.',
     inputSchema: z.object({
         query: z.string(),
         documentIds: z.array(z.string().uuid()),
     }),
-
     execute: async ({ query, documentIds }) => {
-        console.log("TOOL searchDocs CALLED with:", query, documentIds);
+        console.log('TOOL searchDocs CALLED with:', query, documentIds);
 
         if (!documentIds.length) {
-            return "No documents available to search.";
+            return 'RETRIEVAL_FAILED: No document IDs provided.';
         }
 
-        // 1. embed user query
         const { embedding } = await embed({
-            model: openai.embedding("text-embedding-3-small"),
+            model: openai.embedding('text-embedding-3-small'),
             value: query,
         });
 
-        // 2. semantic search scoped to provided documentIds
         const result = await db.execute(sql`
             SELECT dc.content, d.file_name
             FROM document_chunks dc
@@ -40,12 +34,11 @@ files, knowledge base, or stored info.
         `);
 
         if (!result.rows.length) {
-            return "No relevant documents found.";
+            return `RETRIEVAL_FAILED: No relevant content found for query: "${query}"`;
         }
 
-        // 3. return context
         return result.rows
             .map(r => `[${r.file_name}]\n${r.content}`)
-            .join("\n\n");
+            .join('\n\n');
     },
 });

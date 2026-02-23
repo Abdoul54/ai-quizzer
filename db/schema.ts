@@ -194,6 +194,7 @@ export const documents = pgTable("documents", {
     id: uuid("id").defaultRandom().primaryKey(),
     fileName: text("file_name").notNull(),
     fileType: text("file_type").notNull(),
+    content: text("content").notNull(),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),

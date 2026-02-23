@@ -4,7 +4,6 @@ import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
-    SidebarGroup,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -12,7 +11,7 @@ import {
     SidebarRail,
 } from "@/components/ui/sidebar"
 import { Nav } from "./nav"
-import { ClipboardList, Map, PieChart } from "lucide-react"
+import { ClipboardList } from "lucide-react"
 import { User } from "./user"
 import { Logo } from "./logo"
 
@@ -23,23 +22,7 @@ const nav = [
         url: "/quizzes",
         icon: ClipboardList,
     },
-    {
-        title: "Sales & Marketing",
-        url: "#",
-        icon: PieChart,
-    },
-    {
-        title: "Travel",
-        url: "#",
-        icon: Map,
-    },
 ]
-
-const user = {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "https://github.com/shadcn.png",
-}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
@@ -66,7 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Nav nav={nav} />
             </SidebarContent>
             <SidebarFooter>
-                <User user={user} />
+                <User />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>

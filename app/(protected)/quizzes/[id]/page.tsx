@@ -67,13 +67,14 @@ const Page = () => {
         <div className="flex flex-col h-full">
             <div className="flex flex-col gap-2 w-full p-4">
                 <div className="flex items-start justify-between">
-                    <h1 className="text-4xl font-bold tracking-tight">
+                    <h1 className="text-1xl font-bold tracking-tight">
                         {data?.title}
                     </h1>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Edit configuration
+
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/quiz/${id}`)}>
+                            <Play className="w-4 h-4 mr-2" />
+                            Pass the quiz
                         </Button>
                         <Button size="sm" onClick={() => router.push(`/quizzes/${id}/conversation`)}>
                             <Brain className="w-4 h-4 mr-2" />

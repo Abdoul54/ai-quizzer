@@ -37,11 +37,13 @@ export async function POST(req: Request) {
                 userId: session.user.id,
                 fileName: file?.name ?? "manual-text",
                 fileType: file?.type ?? "text/plain",
+                content: text
             })
             .returning({ id: documents.id });
 
         // 2. embed and insert chunks linked to document
         const chunks = chunkText(text, 800);
+        console.log(`Document chunked into ${chunks.length} chunks (text length: ${text.length})`);
 
         for (const chunk of chunks) {
             const { embedding } = await embed({
@@ -68,24 +70,33 @@ export async function POST(req: Request) {
 function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
     const chunks: string[] = [];
 
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const sentences = normalized.split(/(?<=[.?!])\s+|\n{2,}/);
+    // normalize whitespace but preserve paragraph structure
+    const normalized = text
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\n{3,}/g, '\n\n');
+
+    // split on words, keeping paragraph breaks as tokens
+    const words = normalized.split(/(\s+)/);
 
     let current = '';
 
-    for (const sentence of sentences) {
-        if ((current + ' ' + sentence).trim().length <= chunkSize) {
-            current = current ? `${current} ${sentence}` : sentence;
+    for (const word of words) {
+        if ((current + word).length <= chunkSize) {
+            current += word;
         } else {
-            if (current) chunks.push(current.trim());
+            if (current.trim()) {
+                chunks.push(current.trim());
+            }
 
-            const words = current.split(' ');
-            const overlapText = words.slice(-Math.floor(overlap / 5)).join(' ');
-            current = overlapText ? `${overlapText} ${sentence}` : sentence;
+            // carry over last `overlap` characters for context continuity
+            current = current.slice(-overlap) + word;
         }
     }
 
-    if (current.trim()) chunks.push(current.trim());
+    if (current.trim()) {
+        chunks.push(current.trim());
+    }
 
     return chunks;
 }
