@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { difficultyLevel, questionType, statuses } from "@/components/cards/quiz-card";
+import { difficultyLevel, difficultyLevels, questionType, statuses } from "@/components/cards/quiz-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import {
     Layers,
     Globe,
     MessageSquareQuote,
-    Pencil,
     Play,
     Settings2,
     SquareStack,
@@ -63,6 +62,9 @@ const Page = () => {
         { label: data?.title || String(id) },
     ]);
 
+    const difficulty = difficultyLevels?.find(diff => diff?.value === data?.difficulty)?.label
+
+
     return (
         <div className="flex flex-col h-full">
             <div className="flex flex-col gap-2 w-full p-4">
@@ -98,15 +100,15 @@ const Page = () => {
                     {data?.difficulty && (
                         <Badge variant="outline" className="rounded bg-warning/10 text-warning border-warning">
                             <Gauge className="w-3 h-3 mr-1" />
-                            {difficultyLevel[data.difficulty]}
+                            {difficulty}
                         </Badge>
                     )}
-                    {data?.language && (
+                    {/* {data?.language && (
                         <Badge variant="outline" className="rounded bg-info/10 text-info border-info">
                             <Globe className="w-3 h-3 mr-1" />
                             {languages.find(l => l.code === data.language)?.labels.en}
                         </Badge>
-                    )}
+                    )} */}
                 </div>
             </div>
             {/* Render quiz details here */}

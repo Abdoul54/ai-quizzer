@@ -1,17 +1,27 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { NextRequest } from "next/server";
+// /api/quizzes/[id]/xapi/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
     statementLaunchedQuiz,
     statementAnsweredQuestion,
     statementCompletedQuiz,
+    statementSelectedOption,
 } from "@/lib/xapi/statements";
-import { z } from "zod";
 
-const bodySchema = z.discriminatedUnion("event", [
+// You need the actor — get it from the session
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
+const schema = z.discriminatedUnion("event", [
     z.object({
         event: z.literal("launched"),
         quiz: z.object({ id: z.string(), title: z.string() }),
+    }),
+    z.object({
+        event: z.literal("selected"),
+        quiz: z.object({ id: z.string(), title: z.string() }),
+        question: z.object({ id: z.string(), text: z.string() }),
+        response: z.string(),
     }),
     z.object({
         event: z.literal("answered"),
@@ -39,20 +49,30 @@ export async function POST(
     const { id: quizId } = await params;
     void quizId; // available if you need it for logging
 
+    const actor = { name: session.user.name!, email: session.user.email! };
+
     const body = await req.json();
-    const parsed = bodySchema.safeParse(body);
-    if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-
-    const actor = { name: session.user.name, email: session.user.email };
-    const data = parsed.data;
-
-    if (data.event === "launched") {
-        await statementLaunchedQuiz(actor, data.quiz);
-    } else if (data.event === "answered") {
-        await statementAnsweredQuestion(actor, data.quiz, data.question, data.response, data.correct);
-    } else if (data.event === "completed") {
-        await statementCompletedQuiz(actor, data.quiz, data.score, data.total, data.durationSeconds);
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    return Response.json({ ok: true });
+    const data = parsed.data;
+
+    switch (data.event) {
+        case "launched":
+            await statementLaunchedQuiz(actor, data.quiz);
+            break;
+        case "selected":
+            await statementSelectedOption(actor, data.quiz, data.question, data.response);
+            break;
+        case "answered":
+            await statementAnsweredQuestion(actor, data.quiz, data.question, data.response, data.correct);
+            break;
+        case "completed":
+            await statementCompletedQuiz(actor, data.quiz, data.score, data.total, data.durationSeconds);
+            break;
+    }
+
+    return NextResponse.json({ ok: true });
 }

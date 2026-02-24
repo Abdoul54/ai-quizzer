@@ -8,6 +8,7 @@ const verbs = {
     answered: { id: "http://adlnet.gov/expapi/verbs/answered", display: { "en-US": "answered" } },
     passed: { id: "http://adlnet.gov/expapi/verbs/passed", display: { "en-US": "passed" } },
     failed: { id: "http://adlnet.gov/expapi/verbs/failed", display: { "en-US": "failed" } },
+    interacted: { id: "http://adlnet.gov/expapi/verbs/interacted", display: { "en-US": "interacted" } },
 };
 
 interface Actor { name: string; email: string; }
@@ -79,3 +80,28 @@ export const statementCompletedQuiz = (
         },
     } as Statement);
 };
+
+export const statementSelectedOption = (
+    actor: Actor,
+    quiz: { id: string; title: string },
+    question: { id: string; text: string },
+    response: string,
+) =>
+    sendXApiStatement({
+        actor: { name: actor.name, mbox: `mailto:${actor.email}` },
+        verb: verbs.interacted,
+        object: {
+            objectType: "Activity",
+            id: `${XAPI_BASE}/quiz/${quiz.id}/question/${question.id}`,
+            definition: {
+                type: "http://adlnet.gov/expapi/activities/cmi.interaction",
+                name: { "en-US": question.text },
+            },
+        },
+        result: { response },
+        context: {
+            contextActivities: {
+                parent: [{ id: `${XAPI_BASE}/quiz/${quiz.id}`, objectType: "Activity" as const }],
+            },
+        },
+    } as Statement);

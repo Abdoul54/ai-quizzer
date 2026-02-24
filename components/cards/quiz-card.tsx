@@ -1,5 +1,5 @@
 // components/cards/quiz-card.tsx
-import { Quiz } from "@/types";
+import { QuestionType, Quiz } from "@/types";
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Archive, CheckLine, PencilRuler } from "lucide-react";
@@ -19,6 +19,36 @@ export const questionType = {
     true_false: "True/False",
     single_choice: "Single Choice"
 }
+
+
+export const questionTypes: { value: QuestionType; label: string }[] = [
+    {
+        value: "multiple_choice",
+        label: "Multiple Choice"
+    },
+    {
+        value: "true_false",
+        label: "True/False"
+    },
+    {
+        value: "single_choice",
+        label: "Single Choice"
+    }
+]
+export const difficultyLevels: { value: string; label: string }[] = [
+    {
+        value: "easy",
+        label: "Easy"
+    },
+    {
+        value: "medium",
+        label: "Medium"
+    },
+    {
+        value: "hard",
+        label: "Hard"
+    }
+]
 
 export const difficultyLevel = {
     easy: "Easy",

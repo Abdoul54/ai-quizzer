@@ -45,10 +45,9 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
         const correct = q.options.find((o: any) => o.optionText === optionText)?.isCorrect ?? false;
 
         // answered statement — fire and forget
-        xapi.answered(
+        xapi.selected(
             { id: q.id, text: q.questionText },
             optionText,
-            correct,
         );
 
         setAnswers((prev) => {

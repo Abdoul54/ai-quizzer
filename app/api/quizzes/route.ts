@@ -63,12 +63,10 @@ export async function POST(req: NextRequest) {
                     questionCount: parsed.data.questionCount || 10,
                     difficulty: parsed.data.difficulty || "medium",
                     questionTypes: parsed.data.questionTypes || ["true_false", "single_choice", "multiple_choice"],
-                    language: parsed.data.language,
+                    language: parsed.data.defaultLanguage,
                     additionalPrompt: parsed.data.additionalPrompt,
                 });
                 await db.update(quiz).set({ architecture }).where(eq(quiz.id, created.id));
-
-                console.log(architecture);
 
                 // Step 2 — Builder agent
                 send("progress", { step: 2 });

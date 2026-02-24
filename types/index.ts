@@ -98,7 +98,7 @@ export type CreateQuizPayload = Pick<
     | "questionCount"
     | "difficulty"
     | "questionTypes"
-    | "language"
+    | "languages"
     | "additionalPrompt"
     | "architecture"
 >;

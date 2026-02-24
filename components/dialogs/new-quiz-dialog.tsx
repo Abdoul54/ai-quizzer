@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -43,10 +44,12 @@ import {
     Hammer,
     LucideIcon,
 } from "lucide-react";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
-import { Progress } from "../ui/progress";
 import { useRouter } from "next/navigation";
 import StepProgress from "../step-progress";
+import { languages } from "@/lib/languages";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { difficultyLevels, questionTypes } from "../cards/quiz-card";
+import { QuestionType } from "@/types";
 
 const filesIcons: Record<string, React.ReactElement> = {
     // PDF / text
@@ -143,11 +146,11 @@ const NewQuizDialog = () => {
             questionCount: 10,
             difficulty: "medium",
             questionTypes: [],
-            language: "en",
+            defaultLanguage: "en",
+            languages: ['en'],
             additionalPrompt: "",
         },
     });
-
 
     // Change handleUpload to accept the file directly
     async function handleUpload(selectedFile: File) {
@@ -204,7 +207,7 @@ const NewQuizDialog = () => {
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-4xl">
                 {
                     submitting
                         ? <div className="flex items-center justify-center">
@@ -273,36 +276,25 @@ const NewQuizDialog = () => {
                                         }}
                                         className="grid grid-cols-1 md:grid-cols-3 gap-2"
                                     >
-                                        <ToggleGroupItem className="col-span-1" value="easy" aria-label="Toggle easy"
-                                            style={{
-                                                borderColor: form.watch("difficulty") === "easy" ? undefined : 'var(--success)',
-                                                backgroundColor: form.watch("difficulty") === "easy" ? 'var(--success)' : undefined,
-                                                color: form.watch("difficulty") === "easy" ? 'var(--success-foreground)' : 'var(--success)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            Easy
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem className="col-span-1" value="medium" aria-label="Toggle medium"
-                                            style={{
-                                                borderColor: form.watch("difficulty") === "medium" ? undefined : 'var(--warning)',
-                                                backgroundColor: form.watch("difficulty") === "medium" ? 'var(--warning)' : undefined,
-                                                color: form.watch("difficulty") === "medium" ? 'var(--warning-foreground)' : 'var(--warning)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            Medium
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem className="col-span-1" value="hard" aria-label="Toggle hard"
-                                            style={{
-                                                borderColor: form.watch("difficulty") === "hard" ? undefined : 'var(--destructive)',
-                                                backgroundColor: form.watch("difficulty") === "hard" ? 'var(--destructive)' : undefined,
-                                                color: form.watch("difficulty") === "hard" ? 'var(--destructive-foreground)' : 'var(--destructive)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            Hard
-                                        </ToggleGroupItem>
+                                        {
+                                            difficultyLevels?.map(difficulty => {
+                                                const isToggled = form.watch("difficulty")?.includes(difficulty?.value)
+                                                const bg = difficulty?.value === "easy" ? 'var(--success)' : difficulty?.value === "hard" ? 'var(--destructive)' : 'var(--warning)'
+                                                const text = difficulty?.value === "easy" ? 'var(--success-foreground)' : difficulty?.value === "hard" ? 'var(--destructive-foreground)' : 'var(--warning-foreground)'
+
+                                                return (
+                                                    <ToggleGroupItem key={difficulty?.value} className="col-span-1" value={difficulty?.value}
+                                                        style={{
+                                                            backgroundColor: isToggled ? bg : undefined,
+                                                            color: isToggled ? text : undefined,
+                                                            transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        {difficulty?.label}
+                                                    </ToggleGroupItem>
+                                                )
+                                            })
+                                        }
                                     </ToggleGroup>
 
                                     {form.formState.errors.difficulty && (
@@ -323,42 +315,94 @@ const NewQuizDialog = () => {
                                         }}
                                         className="grid grid-cols-1 md:grid-cols-3 gap-2"
                                     >
-                                        <ToggleGroupItem className="col-span-1" value="true_false" aria-label="Toggle true/false"
-                                            style={{
-                                                borderColor: form.watch("questionTypes")?.includes("true_false") === true ? undefined : 'var(--foreground)',
-                                                backgroundColor: form.watch("questionTypes")?.includes("true_false") === true ? 'var(--info)' : undefined,
-                                                color: form.watch("questionTypes")?.includes("true_false") === true ? 'var(--info-foreground)' : 'var(--foreground)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            True/False
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem className="col-span-1" value="single_choice" aria-label="Toggle single choice"
-                                            style={{
-                                                borderColor: form.watch("questionTypes")?.includes("single_choice") === true ? undefined : 'var(--foreground)',
-                                                backgroundColor: form.watch("questionTypes")?.includes("single_choice") === true ? 'var(--info)' : undefined,
-                                                color: form.watch("questionTypes")?.includes("single_choice") === true ? 'var(--info-foreground)' : 'var(--foreground)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            Single Choice
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem className="col-span-1" value="multiple_choice" aria-label="Toggle multiple choice"
-                                            style={{
-                                                borderColor: form.watch("questionTypes")?.includes("multiple_choice") === true ? undefined : 'var(--foreground)',
-                                                backgroundColor: form.watch("questionTypes")?.includes("multiple_choice") === true ? 'var(--info)' : undefined,
-                                                color: form.watch("questionTypes")?.includes("multiple_choice") === true ? 'var(--info-foreground)' : 'var(--foreground)',
-                                                transition: 'all 0.2s',
-                                            }}
-                                        >
-                                            Multiple Choice
-                                        </ToggleGroupItem>
+                                        {
+                                            questionTypes?.map((type) => {
+                                                const isToggled = form.watch("questionTypes")?.includes(type?.value)
+                                                return (
+                                                    <ToggleGroupItem key={type?.value} className="col-span-1" value={type?.value}
+                                                        style={{
+                                                            borderColor: isToggled === true ? undefined : 'var(--foreground)',
+                                                            backgroundColor: isToggled === true ? 'var(--info)' : undefined,
+                                                            color: isToggled === true ? 'var(--info-foreground)' : 'var(--foreground)',
+                                                            transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        {type?.label}
+                                                    </ToggleGroupItem>
+                                                )
+                                            })
+                                        }
                                     </ToggleGroup>
+
+
 
                                     {form.formState.errors.questionTypes && (
                                         <FieldError>{form.formState.errors.questionTypes.message}</FieldError>
                                     )}
                                 </Field>
+
+                                <Field {...(form.formState.errors.defaultLanguage && { "data-invalid": true })}>
+                                    <Label htmlFor="defaultLanguage">Languages</Label>
+                                    <Select value={form.watch('defaultLanguage')} onValueChange={(v) => {
+                                        form.setValue('defaultLanguage', v as CreateQuizInput["defaultLanguage"])
+                                        form.setValue("languages", [v] as CreateQuizInput["languages"], { shouldValidate: true })
+                                    }}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                {languages?.map(l => (<SelectItem key={l?.code} value={l?.code}>{l.labels?.en}</SelectItem>))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                    {form.formState.errors.defaultLanguage && (
+                                        <FieldError>{form.formState.errors.defaultLanguage.message}</FieldError>
+                                    )}
+                                </Field>
+
+                                <Field {...(form.formState.errors.languages && { "data-invalid": true })}>
+                                    <Label htmlFor="languages">Languages</Label>
+                                    <ToggleGroup
+                                        type="multiple"
+                                        size="sm"
+                                        variant="outline"
+                                        spacing={2}
+                                        value={form.watch("languages")}
+                                        onValueChange={(val) => {
+                                            if (val) form.setValue("languages", val as CreateQuizInput["languages"], { shouldValidate: true });
+                                        }}
+                                        className="grid grid-cols-1 md:grid-cols-4 gap-2"
+                                    >
+                                        {languages?.map(l => {
+                                            const isSelected = (form.watch("languages") ?? []).includes(l?.code as any)
+                                            const isDefaultLang = form.watch("defaultLanguage") === l?.code
+
+                                            return (
+                                                <ToggleGroupItem
+                                                    className="col-span-1"
+                                                    key={l?.code} value={l?.code}
+                                                    disabled={isDefaultLang}
+                                                    style={{
+                                                        borderColor: isDefaultLang || isSelected ? undefined : 'var(--foreground)',
+                                                        backgroundColor: isDefaultLang || isSelected ? 'var(--primary)' : undefined,
+                                                        color: isDefaultLang || isSelected ? 'var(--primary-foreground)' : 'var(--foreground)',
+                                                        transition: 'all 0.2s',
+                                                    }}
+
+                                                >
+                                                    {l.labels?.en}
+                                                </ToggleGroupItem>
+                                            )
+                                        })}
+
+                                    </ToggleGroup>
+
+                                    {form.formState.errors.languages && (
+                                        <FieldError>{form.formState.errors.languages.message}</FieldError>
+                                    )}
+                                </Field>
+
                                 <Field {...(form.formState.errors.additionalPrompt && { "data-invalid": true })}>
                                     <Label htmlFor="additionalPrompt">Additional Prompt</Label>
                                     <Textarea
