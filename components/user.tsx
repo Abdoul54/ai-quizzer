@@ -50,7 +50,7 @@ export function User() {
         const { error } = await signOut();
 
         if (error) {
-            console.log(error.message ?? "Sign-out failed");
+            console.error(error.message ?? "Sign-out failed");
             toast.error(error.message ?? "Sign-out failed");
             setLoading(false);
         } else {

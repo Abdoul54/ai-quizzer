@@ -9,9 +9,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "./ui/select";
-import { Trash2, Sparkles } from "lucide-react";
+import { Trash2, Sparkles, Plus, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useImproveQuestion } from "@/hooks/api/use-improve-question";
+import { GradientIcon } from "./gradient-icon";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
@@ -49,6 +50,11 @@ interface Props {
         newOptions: { optionText: string; isCorrect: boolean }[]
     ) => void;
 
+    onAddOption: (
+        questionId: string,
+        option: { optionText: string; isCorrect: boolean }
+    ) => void;
+
     onDelete: (questionId: string) => void;
 }
 
@@ -59,14 +65,23 @@ export const EditableQuestion = ({
     onUpdateQuestion,
     onUpdateOption,
     onReplaceOptions,
+    onAddOption,
     onDelete,
 }: Props) => {
+    // 🔥 TRACK WHICH QUESTION + OPTION IS IMPROVING
+    const [improvingQuestionId, setImprovingQuestionId] = useState<string | null>(null);
+    const [improvingOptionId, setImprovingOptionId] = useState<string | null>(null);
+
     const [questionText, setQuestionText] = useState(question.questionText);
     const [optionTexts, setOptionTexts] = useState<Record<string, string>>(
         Object.fromEntries(question.options.map(o => [o.id, o.optionText]))
     );
 
-    const { improveQuestionText, improveOption, improveAllOptions, changeType } = useImproveQuestion(quizId);
+    const { improveQuestionText, improveOption, changeType, addDistractor } =
+        useImproveQuestion(quizId);
+
+    // 🔒 lock only THIS question
+    const isLocked = improvingQuestionId === question.id;
 
     const handleQuestionBlur = () => {
         if (questionText !== question.questionText) {
@@ -77,53 +92,80 @@ export const EditableQuestion = ({
     const handleOptionBlur = (optionId: string) => {
         const current = question.options.find(o => o.id === optionId)?.optionText;
         if (optionTexts[optionId] !== current) {
-            onUpdateOption(question.id, optionId, { optionText: optionTexts[optionId] });
+            onUpdateOption(question.id, optionId, {
+                optionText: optionTexts[optionId],
+            });
         }
     };
 
     const handleCorrectToggle = (optionId: string, currentValue: boolean) => {
+        if (isLocked) return;
         onUpdateOption(question.id, optionId, { isCorrect: !currentValue });
     };
 
     const handleTypeChange = async (value: QuestionType) => {
-        const result = await changeType.mutateAsync({ question, newType: value });
+        try {
+            setImprovingQuestionId(question.id);
 
-        setQuestionText(result.questionText);
+            const result = await changeType.mutateAsync({
+                question,
+                newType: value,
+            });
 
-        // replace ALL options completely
-        onUpdateQuestion(question.id, {
-            questionType: result.questionType,
-            questionText: result.questionText,
-        });
+            setQuestionText(result.questionText);
 
-        // 🔥 THIS is the key
-        onReplaceOptions(question.id, result.options);
+            onUpdateQuestion(question.id, {
+                questionType: result.questionType,
+                questionText: result.questionText,
+            });
+
+            onReplaceOptions(question.id, result.options);
+        } finally {
+            setImprovingQuestionId(null);
+        }
     };
 
+    const canAddDistractor =
+        question.questionType !== "true_false" && question.options.length < 5;
+
     return (
-        <Card className="w-full">
+        <Card
+            className={cn(
+                "w-full transition-opacity",
+                isLocked && "opacity-60 pointer-events-none"
+            )}
+        >
             <CardHeader className="flex items-center justify-between">
                 <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                     Question {index + 1}
                 </CardTitle>
+
                 <CardAction className="flex items-center gap-1">
                     <Select
                         value={question.questionType}
                         onValueChange={handleTypeChange}
-                        disabled={changeType.isPending}
+                        disabled={isLocked}
                     >
-                        <SelectTrigger className="text-xs border-0 shadow-none">
+                        <SelectTrigger
+                            className={cn(
+                                "text-xs border-0 shadow-none",
+                                changeType.isPending && "animated-gradient"
+                            )}
+                        >
                             <SelectValue />
                         </SelectTrigger>
+
                         <SelectContent>
                             <SelectItem value="single_choice">Single choice</SelectItem>
                             <SelectItem value="multiple_choice">Multiple choice</SelectItem>
                             <SelectItem value="true_false">True / False</SelectItem>
                         </SelectContent>
                     </Select>
+
                     <Button
                         variant="ghost"
                         size="icon"
+                        disabled={isLocked}
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={() => onDelete(question.id)}
                     >
@@ -133,58 +175,86 @@ export const EditableQuestion = ({
             </CardHeader>
 
             <CardContent className="flex flex-col gap-4">
-                {/* question text */}
+                {/* QUESTION TEXT */}
                 <div className="flex items-center gap-1 border-b pb-3">
                     <Input
                         value={questionText}
                         onChange={e => setQuestionText(e.target.value)}
                         onBlur={handleQuestionBlur}
-                        className="border-0 shadow-none px-0 font-medium text-sm focus-visible:ring-0 bg-transparent"
+                        disabled={isLocked}
+                        className={cn(
+                            "border-0 shadow-none font-medium text-sm focus-visible:ring-0 bg-transparent",
+                            improveQuestionText.isPending && "animated-gradient"
+                        )}
                         placeholder="Question text..."
                     />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-primary"
-                        disabled={improveQuestionText.isPending}
-                        onClick={async () => {
-                            const result = await improveQuestionText.mutateAsync(question);
-                            setQuestionText(result.questionText);
-                            onUpdateQuestion(question.id, { questionText: result.questionText });
-                        }}
-                    >
-                        <Sparkles className="w-3.5 h-3.5" />
-                    </Button>
+
+                    {!improveQuestionText.isPending && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isLocked}
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={async () => {
+                                try {
+                                    setImprovingQuestionId(question.id);
+
+                                    const result = await improveQuestionText.mutateAsync(question);
+
+                                    setQuestionText(result.questionText);
+                                    onUpdateQuestion(question.id, {
+                                        questionText: result.questionText,
+                                    });
+                                } finally {
+                                    setImprovingQuestionId(null);
+                                }
+                            }}
+                        >
+                            <GradientIcon icon={Wand2} size={14} />
+                        </Button>
+                    )}
                 </div>
 
-                {/* options */}
+                {/* OPTIONS */}
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                             Options
                         </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-xs gap-1 text-muted-foreground hover:text-primary"
-                            disabled={improveAllOptions.isPending}
-                            onClick={async () => {
-                                const result = await improveAllOptions.mutateAsync(question);
-                                const newOptionTexts: Record<string, string> = {};
-                                question.options.forEach((o, i) => {
-                                    newOptionTexts[o.id] = result.options[i]?.optionText ?? o.optionText;
-                                });
-                                setOptionTexts(newOptionTexts);
-                                question.options.forEach((o, i) => {
-                                    const newText = result.options[i]?.optionText;
-                                    if (newText && newText !== o.optionText) {
-                                        onUpdateOption(question.id, o.id, { optionText: newText });
+
+                        {canAddDistractor && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isLocked}
+                                className={cn(
+                                    "h-6 text-xs gap-1 text-muted-foreground hover:text-primary",
+                                    addDistractor.isPending && "animated-gradient"
+                                )}
+                                onClick={async () => {
+                                    try {
+                                        setImprovingQuestionId(question.id);
+
+                                        const result = await addDistractor.mutateAsync(question);
+
+                                        onAddOption(question.id, {
+                                            optionText: result.optionText,
+                                            isCorrect: false,
+                                        });
+                                    } finally {
+                                        setImprovingQuestionId(null);
                                     }
-                                });
-                            }}
-                        >
-                            <Sparkles className="w-3 h-3" /> Improve all
-                        </Button>
+                                }}
+                            >
+                                {addDistractor.isPending ? (
+                                    "Adding..."
+                                ) : (
+                                    <>
+                                        <Plus className="w-3 h-3" /> Add distractor
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
 
                     {question.options.map(option => (
@@ -192,13 +262,18 @@ export const EditableQuestion = ({
                             key={option.id}
                             className={cn(
                                 "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
-                                option.isCorrect
-                                    ? "border-green-500/40 bg-green-500/5"
-                                    : "border-border bg-transparent"
+                                improvingOptionId === option.id
+                                    ? "animated-gradient"
+                                    : option.isCorrect
+                                        ? "border-green-500/40 bg-green-500/5"
+                                        : "border-border bg-transparent"
                             )}
                         >
                             <button
-                                onClick={() => handleCorrectToggle(option.id, option.isCorrect)}
+                                onClick={() =>
+                                    handleCorrectToggle(option.id, option.isCorrect)
+                                }
+                                disabled={isLocked}
                                 className={cn(
                                     "w-3.5 h-3.5 rounded-full border-2 transition-colors",
                                     option.isCorrect
@@ -206,29 +281,53 @@ export const EditableQuestion = ({
                                         : "border-muted-foreground hover:border-green-400"
                                 )}
                             />
+
                             <Input
                                 value={optionTexts[option.id] ?? option.optionText}
+                                disabled={isLocked}
                                 onChange={e =>
-                                    setOptionTexts(prev => ({ ...prev, [option.id]: e.target.value }))
+                                    setOptionTexts(prev => ({
+                                        ...prev,
+                                        [option.id]: e.target.value,
+                                    }))
                                 }
                                 onBlur={() => handleOptionBlur(option.id)}
                                 className="h-7 border-0 shadow-none px-0 text-sm focus-visible:ring-0 bg-transparent"
                             />
+
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                disabled={isLocked}
                                 className="h-6 w-6 text-muted-foreground hover:text-primary"
-                                disabled={improveOption.isPending}
                                 onClick={async () => {
-                                    const result = await improveOption.mutateAsync({
-                                        questionText: question.questionText,
-                                        option: { optionText: option.optionText, isCorrect: option.isCorrect },
-                                    });
-                                    setOptionTexts(prev => ({ ...prev, [option.id]: result.optionText }));
-                                    onUpdateOption(question.id, option.id, { optionText: result.optionText });
+                                    try {
+                                        setImprovingQuestionId(question.id);
+                                        setImprovingOptionId(option.id);
+
+                                        const result = await improveOption.mutateAsync({
+                                            questionText: question.questionText,
+                                            option: {
+                                                optionText: option.optionText,
+                                                isCorrect: option.isCorrect,
+                                            },
+                                        });
+
+                                        setOptionTexts(prev => ({
+                                            ...prev,
+                                            [option.id]: result.optionText,
+                                        }));
+
+                                        onUpdateOption(question.id, option.id, {
+                                            optionText: result.optionText,
+                                        });
+                                    } finally {
+                                        setImprovingOptionId(null);
+                                        setImprovingQuestionId(null);
+                                    }
                                 }}
                             >
-                                <Sparkles className="w-3 h-3" />
+                                <GradientIcon icon={Sparkles} size={14} />
                             </Button>
                         </div>
                     ))}

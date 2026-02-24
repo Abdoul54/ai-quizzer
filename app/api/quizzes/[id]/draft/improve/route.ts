@@ -5,16 +5,10 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 
-type Question = {
-    questionText: string;
-    questionType: "true_false" | "single_choice" | "multiple_choice";
-    options: {
-        optionText: string;
-        isCorrect: boolean;
-    }[];
-};
+// ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const improveSchema = z.discriminatedUnion("scope", [
+    // Reword the question text for clarity — options untouched
     z.object({
         scope: z.literal("question_text"),
         question: z.object({
@@ -23,19 +17,13 @@ const improveSchema = z.discriminatedUnion("scope", [
             options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
         }),
     }),
+    // Fix one specific option — never reveals or changes isCorrect
     z.object({
         scope: z.literal("single_option"),
         questionText: z.string(),
         option: z.object({ optionText: z.string(), isCorrect: z.boolean() }),
     }),
-    z.object({
-        scope: z.literal("all_options"),
-        question: z.object({
-            questionText: z.string(),
-            questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
-            options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-        }),
-    }),
+    // Convert between question types
     z.object({
         scope: z.literal("change_type"),
         question: z.object({
@@ -45,18 +33,28 @@ const improveSchema = z.discriminatedUnion("scope", [
         }),
         newType: z.enum(["true_false", "single_choice", "multiple_choice"]),
     }),
+    // Generate a new plausible wrong option to add to the question
+    z.object({
+        scope: z.literal("add_distractor"),
+        question: z.object({
+            questionText: z.string(),
+            questionType: z.enum(["single_choice", "multiple_choice"]),
+            options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
+        }),
+    }),
 ]);
 
 const questionTextSchema = z.object({ questionText: z.string() });
 const singleOptionSchema = z.object({ optionText: z.string() });
-const allOptionsSchema = z.object({
-    options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-});
 const changeTypeSchema = z.object({
     questionText: z.string(),
     questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
     options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
 });
+const addDistractorSchema = z.object({ optionText: z.string() });
+
+// ─── Route ────────────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -67,35 +65,34 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
 
+    // ── question_text ─────────────────────────────────────────────────────────
     if (data.scope === "question_text") {
         const { object } = await generateObject({
             model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
             schema: questionTextSchema,
             system: `You are a quiz question editor. Rewrite the question text to be clearer and more precise. Do not change the intent or difficulty.`,
-            prompt: `Improve this question text:\n\n"${data.question.questionText}"\n\nContext - question type: ${data.question.questionType}, options: ${data.question.options.map(o => o.optionText).join(", ")}`,
+            prompt: `Improve this question text:\n\n"${data.question.questionText}"\n\nContext — type: ${data.question.questionType}, options: ${data.question.options.map(o => o.optionText).join(", ")}`,
         });
         return Response.json(object);
     }
 
+    // ── single_option ─────────────────────────────────────────────────────────
     if (data.scope === "single_option") {
+        // Strip isCorrect — the AI has no business knowing which answer is correct
         const { object } = await generateObject({
             model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
             schema: singleOptionSchema,
-            system: `You are a quiz question editor. Improve a single answer option to be clearer and more plausible. Do not change whether it is correct or incorrect.`,
-            prompt: `Question: "${data.questionText}"\n\nImprove this option (isCorrect: ${data.option.isCorrect}):\n"${data.option.optionText}"`,
+            system: `You are a quiz question editor. Improve this answer option to be clearer and more plausible. Do not change its meaning.`,
+            prompt: `Question: "${data.option.isCorrect
+                ? "Improve this correct answer to be clear and precise."
+                : "Improve this distractor to be plausible but clearly wrong."
+                }"\n\nQuestion: "${data.questionText}"\nOption: "${data.option.optionText}"`,
         });
-        return Response.json(object);
+        // isCorrect reattached from the original — never derived from AI output
+        return Response.json({ optionText: object.optionText, isCorrect: data.option.isCorrect });
     }
 
-    if (data.scope === "all_options") {
-        const { object } = await generateObject({
-            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
-            schema: allOptionsSchema,
-            system: `You are a quiz question editor. Improve all answer options to be clearer and more plausible. Keep the same number of options and do not change which ones are correct.`,
-            prompt: `Question: "${data.question.questionText}"\n\nImprove these options:\n${JSON.stringify(data.question.options, null, 2)}`,
-        });
-        return Response.json(object);
-    }
+    // ── change_type ───────────────────────────────────────────────────────────
     if (data.scope === "change_type") {
         const { object } = await generateObject({
             model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
@@ -103,61 +100,53 @@ export async function POST(req: NextRequest) {
             system: `
 You are an expert quiz editor that converts questions between types with strict structural rules.
 
-You MUST transform both the question text AND options to correctly match the new type.
-You are allowed to delete, rewrite, or regenerate options when required.
-
-GENERAL RULES:
-- Preserve the core topic and knowledge being tested.
-- Improve clarity and quality.
-- Ensure the final structure strictly matches the target type.
-- Never keep options that don't fit the new type.
-
 TYPE CONVERSION RULES:
 
 IF new type = true_false:
-- Completely discard existing options.
-- Create exactly 2 options: "True" and "False".
-- Only one must be correct.
-- Rewrite the question into a clear factual statement that can be evaluated as true or false.
-- Do NOT keep old options.
+- Discard all existing options.
+- Create exactly 2 options: "True" and "False", one correct.
+- Rewrite the question as a clear factual statement.
 
 IF new type = single_choice:
-- Create 3 to 5 options total.
-- Exactly ONE option must be correct.
-- If multiple answers were previously correct, select the best one and make others plausible distractors.
-- Rewrite the question so it clearly asks for one correct answer.
-- You may rewrite or regenerate all options.
+- Create 3–5 options total, exactly ONE correct.
+- Rewrite question to ask for one answer.
 
 IF new type = multiple_choice:
-- Create 3 to 5 options total.
-- At least TWO must be correct.
-- Rewrite question to indicate multiple answers (e.g. "Which of the following...").
-- Ensure distractors are plausible.
-- You may rewrite or regenerate all options.
-
-OUTPUT REQUIREMENTS:
-- Return a fully valid question matching the requested type.
-- Ensure options count and correctness strictly follow rules.
-- Ensure wording naturally matches the new format.
-`,
+- Create 3–5 options total, at least TWO correct.
+- Rewrite question to indicate multiple answers (e.g. "Which of the following...").`,
             prompt: `Convert this question from ${data.question.questionType} to ${data.newType}:\n\n${JSON.stringify(data.question, null, 2)}`,
         });
 
-        const fixed = enforceStructure(object, data.newType);
-        console.log("FINAL FIXED QUESTION:", fixed);
-        return Response.json(fixed);
+        return Response.json(enforceStructure(object, data.newType));
     }
 
+    // ── add_distractor ────────────────────────────────────────────────────────
+    if (data.scope === "add_distractor") {
+        const existingOptions = data.question.options.map(o => o.optionText);
+
+        const { object } = await generateObject({
+            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
+            schema: addDistractorSchema,
+            system: `You are a quiz question editor. Generate a single new plausible but incorrect answer option (distractor) for the given question. It must be clearly wrong but not obviously so. Do not duplicate any existing options.`,
+            prompt: `Question: "${data.question.questionText}"\n\nExisting options:\n${existingOptions.map(o => `- ${o}`).join("\n")}\n\nGenerate one new distractor.`,
+        });
+
+        // Always incorrect — it's a distractor by definition
+        return Response.json({ optionText: object.optionText, isCorrect: false });
+    }
 }
 
-function enforceStructure(
-    q: Question,
-    newType: "true_false" | "single_choice" | "multiple_choice"
-): Question {    // ===== TRUE FALSE =====
-    if (newType === "true_false") {
-        // detect if statement is true based on previous correct answers
-        const hadCorrect = q.options?.some(o => o.isCorrect);
+// ─── Enforce Structure ────────────────────────────────────────────────────────
 
+type Question = {
+    questionText: string;
+    questionType: "true_false" | "single_choice" | "multiple_choice";
+    options: { optionText: string; isCorrect: boolean }[];
+};
+
+function enforceStructure(q: Question, newType: Question["questionType"]): Question {
+    if (newType === "true_false") {
+        const hadCorrect = q.options?.some(o => o.isCorrect);
         return {
             questionText: q.questionText,
             questionType: "true_false",
@@ -168,38 +157,23 @@ function enforceStructure(
         };
     }
 
-    // ===== SINGLE CHOICE =====
     if (newType === "single_choice") {
         let options = q.options?.slice(0, 5) || [];
-
         if (options.length < 3) {
             options.push(
                 { optionText: "None of the above", isCorrect: false },
                 { optionText: "All of the above", isCorrect: false }
             );
         }
-
         const correct = options.filter(o => o.isCorrect);
-
         if (correct.length !== 1) {
-            // force exactly one correct
-            options = options.map((o, i) => ({
-                ...o,
-                isCorrect: i === 0
-            }));
+            options = options.map((o, i) => ({ ...o, isCorrect: i === 0 }));
         }
-
-        return {
-            questionText: q.questionText,
-            questionType: "single_choice",
-            options: options.slice(0, 5),
-        };
+        return { questionText: q.questionText, questionType: "single_choice", options: options.slice(0, 5) };
     }
 
-    // ===== MULTIPLE CHOICE =====
     if (newType === "multiple_choice") {
         let options = q.options?.slice(0, 5) || [];
-
         if (options.length < 3) {
             options.push(
                 { optionText: "Option A", isCorrect: true },
@@ -207,22 +181,11 @@ function enforceStructure(
                 { optionText: "Option C", isCorrect: false }
             );
         }
-
         const correct = options.filter(o => o.isCorrect);
-
         if (correct.length < 2) {
-            // force at least 2 correct
-            options = options.map((o, i) => ({
-                ...o,
-                isCorrect: i < 2
-            }));
+            options = options.map((o, i) => ({ ...o, isCorrect: i < 2 }));
         }
-
-        return {
-            questionText: q.questionText,
-            questionType: "multiple_choice",
-            options: options.slice(0, 5),
-        };
+        return { questionText: q.questionText, questionType: "multiple_choice", options: options.slice(0, 5) };
     }
 
     return q;

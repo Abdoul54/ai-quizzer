@@ -25,8 +25,6 @@ const Page = () => {
         { label: "Conversation" }
     ]);
 
-    console.log(data?.quiz);
-
     return (
         <div className="flex flex-col h-full gap-2">
             <div className="flex  justify-between items-center" >
@@ -42,13 +40,13 @@ const Page = () => {
                     {approveQuiz.isPending ? "Approving..." : "Approve quiz"}
                 </Button>
             </div>
-            <div className="flex-1 flex gap-2">
-                <Card className="flex-1">
+            <div className="grid grid-cols-5 flex-1 gap-2">
+                <Card className="flex-1 col-span-2">
                     <CardContent className="h-full">
                         <Chat quizId={String(id)} />
                     </CardContent>
                 </Card>
-                <Card className="flex-1 bg-transparent p-2">
+                <Card className="flex-1 col-span-3 bg-transparent p-2">
                     <EditablePreview id={String(id)} />
                 </Card>
             </div>

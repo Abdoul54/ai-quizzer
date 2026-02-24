@@ -5,6 +5,7 @@ import "./globals.css";
 import { DirectionProvider } from "@/components/ui/direction";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
+import { GlobalGradientDefs } from "@/components/global-gradient-defs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <DirectionProvider dir="ltr">
+          <GlobalGradientDefs />
           <QueryProvider>
             <TooltipProvider>
               {children}

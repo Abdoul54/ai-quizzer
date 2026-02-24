@@ -36,15 +36,15 @@ export const useImproveQuestion = (quizId: string) => {
             postImprove(quizId, { scope: "single_option", questionText, option }),
     });
 
-    const improveAllOptions = useMutation({
-        mutationFn: (question: Question) =>
-            postImprove(quizId, { scope: "all_options", question }),
-    });
-
     const changeType = useMutation({
         mutationFn: ({ question, newType }: { question: Question; newType: QuestionType }) =>
             postImprove(quizId, { scope: "change_type", question, newType }),
     });
 
-    return { improveQuestionText, improveOption, improveAllOptions, changeType };
+    const addDistractor = useMutation({
+        mutationFn: (question: Question) =>
+            postImprove(quizId, { scope: "add_distractor", question }),
+    });
+
+    return { improveQuestionText, improveOption, changeType, addDistractor };
 };

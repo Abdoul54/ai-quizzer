@@ -162,3 +162,53 @@
 @utility h-sidebar {
   height: calc(100vh - 155px);
 }
+
+@layer utilities {
+  .scrollbar-x::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 999px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+
+  /* Firefox */
+  .scrollbar-x {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 120, 120, 0.7) transparent;
+  }
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient {
+  background: linear-gradient(270deg,
+      rgba(99, 102, 241, .35),
+      rgba(56, 189, 248, .35),
+      rgba(139, 92, 246, .35),
+      rgba(99, 102, 241, .35));
+  background-size: 300% 300%;
+  animation: gradientMove 4s ease infinite;
+  filter: blur(0.3px);
+}

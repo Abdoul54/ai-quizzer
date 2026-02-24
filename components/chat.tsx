@@ -92,7 +92,7 @@ const Chat = ({ quizId }: { quizId: string }) => {
                         <PromptInputBody>
                             <PromptInputTextarea placeholder="Type a message…" />
                         </PromptInputBody>
-                        <PromptInputFooter>
+                        <PromptInputFooter className="justify-end">
                             <PromptInputSubmit
                                 status={status === "streaming" ? "streaming" : "ready"}
                             />

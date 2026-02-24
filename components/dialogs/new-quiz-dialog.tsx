@@ -195,8 +195,6 @@ const NewQuizDialog = () => {
         );
     };
 
-    console.log(currentStep);
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

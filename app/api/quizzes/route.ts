@@ -72,7 +72,11 @@ export async function POST(req: NextRequest) {
 
                 // Step 2 — Builder agent
                 send("progress", { step: 2 });
-                await builder({ quizId: created.id, architecture });
+                await builder({
+                    quizId: created.id,
+                    architecture,
+                    documentIds: parsed.data.documentIds ?? [],
+                });
 
                 send("done", { quizId: created.id });
             } catch (err) {

@@ -25,7 +25,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { id } = parsedParams.data;
 
-    // Verify the quiz belongs to the current user
     const quizExists = await db.query.quiz.findFirst({
         where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
         columns: { id: true },
@@ -35,7 +34,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    // Fetch the latest draft
     const latestDraft = await db.query.draft.findFirst({
         where: eq(draft.quizId, id),
         orderBy: [desc(draft.createdAt)],
@@ -47,7 +45,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     return NextResponse.json(latestDraft);
 }
-
 
 const optionSchema = z.object({
     id: z.string(),
@@ -91,12 +88,18 @@ const patchSchema = z.discriminatedUnion("operation", [
     z.object({
         operation: z.literal("replace_options"),
         questionId: z.string(),
-        options: z.array(
-            z.object({
-                optionText: z.string(),
-                isCorrect: z.boolean(),
-            })
-        ),
+        options: z.array(z.object({
+            optionText: z.string(),
+            isCorrect: z.boolean(),
+        })),
+    }),
+    z.object({
+        operation: z.literal("add_option"),
+        questionId: z.string(),
+        option: z.object({
+            optionText: z.string(),
+            isCorrect: z.boolean(),
+        }),
     }),
 ]);
 
@@ -117,14 +120,12 @@ export async function PATCH(
     if (!quizExists)
         return NextResponse.json({ error: "Quiz is not found" }, { status: 404 });
 
-
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
         return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    // fetch latest draft
     const [current] = await db
         .select()
         .from(draft)
@@ -201,10 +202,24 @@ export async function PATCH(
                     ? {
                         ...q,
                         options: op.options.map(o => ({
-                            id: uuidv4(), // new ids
+                            id: uuidv4(),
                             optionText: o.optionText,
                             isCorrect: o.isCorrect,
                         })),
+                    }
+                    : q
+            );
+            break;
+        }
+        case "add_option": {
+            updatedQuestions = updatedQuestions.map(q =>
+                q.id === op.questionId
+                    ? {
+                        ...q,
+                        options: [
+                            ...q.options,
+                            { id: uuidv4(), optionText: op.option.optionText, isCorrect: op.option.isCorrect },
+                        ],
                     }
                     : q
             );

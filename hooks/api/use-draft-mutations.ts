@@ -62,21 +62,16 @@ export const useDraftMutations = (quizId: string) => {
     });
 
     const replaceOptions = useMutation({
-        mutationFn: ({
-            questionId,
-            options,
-        }: {
-            questionId: string;
-            options: { optionText: string; isCorrect: boolean }[];
-        }) =>
-            patchDraft(quizId, {
-                operation: "replace_options",
-                questionId,
-                options,
-            }),
-
+        mutationFn: ({ questionId, options }: { questionId: string; options: { optionText: string; isCorrect: boolean }[] }) =>
+            patchDraft(quizId, { operation: "replace_options", questionId, options }),
         onSuccess: invalidate,
     });
 
-    return { updateQuestion, updateOption, addQuestion, deleteQuestion, reorderQuestions, replaceOptions };
+    const addOption = useMutation({
+        mutationFn: ({ questionId, option }: { questionId: string; option: { optionText: string; isCorrect: boolean } }) =>
+            patchDraft(quizId, { operation: "add_option", questionId, option }),
+        onSuccess: invalidate,
+    });
+
+    return { updateQuestion, updateOption, addQuestion, deleteQuestion, reorderQuestions, replaceOptions, addOption };
 };

@@ -85,7 +85,7 @@ const SortableQuestionRow = ({
 
 const EditablePreview = ({ id }: { id: string }) => {
     const { data, isLoading, error } = useLatestDraft(id);
-    const { reorderQuestions, deleteQuestion, updateQuestion, updateOption, replaceOptions } =
+    const { reorderQuestions, deleteQuestion, updateQuestion, updateOption, replaceOptions, addOption } =
         useDraftMutations(id);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -104,15 +104,14 @@ const EditablePreview = ({ id }: { id: string }) => {
         reorderQuestions.mutate(reordered.map(q => q.id));
     };
 
-
     if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
     if (error) return <div className="p-4 text-sm text-destructive">Error: {error.message}</div>;
     if (!questions.length) return <div className="p-4 text-sm text-muted-foreground">No questions yet.</div>;
 
     return (
         <div className="flex flex-col h-full gap-2 overflow-hidden">
-            {/* left: question list */}
-            <div className="w-full flex flex-row gap-1 overflow-x-auto pb-1">
+            {/* question tabs */}
+            <div className="w-full min-w-0 flex flex-row gap-1 overflow-x-auto pb-1 scrollbar-x">
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -135,8 +134,8 @@ const EditablePreview = ({ id }: { id: string }) => {
                 </DndContext>
             </div>
 
-            {/* right: editable card */}
-            <div className="flex-1 flex overflow-y-auto items-center ">
+            {/* editable card */}
+            <div className="flex-1 flex overflow-y-auto items-center">
                 {selectedQuestion && (
                     <EditableQuestion
                         key={selectedQuestion.id}
@@ -157,6 +156,9 @@ const EditablePreview = ({ id }: { id: string }) => {
                         }}
                         onReplaceOptions={(questionId, options) =>
                             replaceOptions.mutate({ questionId, options })
+                        }
+                        onAddOption={(questionId, option) =>
+                            addOption.mutate({ questionId, option })
                         }
                     />
                 )}
