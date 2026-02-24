@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/db';
 import { draft } from '@/db/schema';
+import { desc, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 const questionSchema = z.object({
-    id: z.string().optional(), // optional so the AI doesn't have to supply it
+    id: z.string().optional(),
     questionText: z.string(),
     questionType: z.enum(['true_false', 'single_choice', 'multiple_choice']),
     options: z.array(z.object({
@@ -16,26 +18,69 @@ const questionSchema = z.object({
 });
 
 export const updateDraft = tool({
-    description: 'Saves the modified quiz draft. Call this after applying all requested changes.',
+    description: `Patches one or more questions in the draft. 
+- To edit an existing question: include its "id" from the draft. Only the questions you pass are changed; all others remain untouched.
+- To add a new question: omit the "id".
+- To delete a question: pass its "id" and set "delete: true".
+Never reconstruct the full questions array yourself.`,
     inputSchema: z.object({
         quizId: z.string().uuid(),
-        questions: z.array(questionSchema),
+        changes: z.array(questionSchema.extend({
+            delete: z.boolean().optional(),
+        })),
     }),
-    execute: async ({ quizId, questions }) => {
-        // preserve existing IDs, generate new ones for anything missing
-        const questionsWithIds = questions.map(q => ({
-            ...q,
-            id: q.id ?? uuidv4(),
-            options: q.options.map(o => ({
-                ...o,
-                id: o.id ?? uuidv4(),
-            })),
-        }));
+    execute: async ({ quizId, changes }) => {
+        // Load the latest draft
+        const [current] = await db
+            .select()
+            .from(draft)
+            .where(eq(draft.quizId, quizId))
+            .orderBy(desc(draft.createdAt))
+            .limit(1);
 
-        await db
-            .insert(draft)
-            .values({ quizId, content: { questions: questionsWithIds } });
+        if (!current) return 'DRAFT_NOT_FOUND';
 
-        return 'DRAFT_UPDATED';
+        const existing = (current.content as { questions: any[] }).questions;
+
+        // Apply patches
+        let updated = existing
+            .filter(q => {
+                const change = changes.find(c => c.id === q.id);
+                return !(change?.delete);
+            })
+            .map(q => {
+                const change = changes.find(c => c.id === q.id);
+                if (!change) return q;
+                return {
+                    ...q,
+                    questionText: change.questionText,
+                    questionType: change.questionType,
+                    options: change.options.map(o => ({
+                        id: o.id ?? uuidv4(),
+                        optionText: o.optionText,
+                        isCorrect: o.isCorrect,
+                    })),
+                };
+            });
+
+        // Append new questions (no id provided)
+        const newQuestions = changes
+            .filter(c => !c.id && !c.delete)
+            .map(c => ({
+                id: uuidv4(),
+                questionText: c.questionText,
+                questionType: c.questionType,
+                options: c.options.map(o => ({
+                    id: uuidv4(),
+                    optionText: o.optionText,
+                    isCorrect: o.isCorrect,
+                })),
+            }));
+
+        updated = [...updated, ...newQuestions];
+
+        await db.insert(draft).values({ quizId, content: { questions: updated } });
+
+        return `DRAFT_UPDATED: ${changes.length} change(s) applied. Draft now has ${updated.length} questions.`;
     },
 });

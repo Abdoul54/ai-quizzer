@@ -19,6 +19,7 @@ export const getDraft = tool({
 
         if (!current) return 'DRAFT_NOT_FOUND';
 
-        return JSON.stringify(current.content);
+        const content = current.content as { questions?: unknown[] } | null | undefined;
+        return { questions: content?.questions, number_of_questions: content?.questions?.length };
     },
 });
