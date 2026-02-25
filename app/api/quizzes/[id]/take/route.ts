@@ -8,6 +8,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
+    const language = 'en'
 
     const found = await db.query.quiz.findFirst({
         where: eq(quiz.id, id),
@@ -21,5 +22,23 @@ export async function GET(
     if (!found) return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     if (found.status !== "published") return NextResponse.json({ error: "Quiz not available" }, { status: 403 });
 
-    return NextResponse.json(found);
+    const quizInPreferedLang = {
+        ...found,
+        questions: found?.questions?.map(q => {
+            const question = {
+                ...q,
+                questionText: (q?.questionText as Record<string, string> | undefined)?.[language],
+                options: q?.options?.map(o => {
+                    const option = {
+                        ...o,
+                        optionText: (o?.optionText as Record<string, string> | undefined)?.[language]
+                    }
+                    return option
+                })
+            }
+            return question;
+        })
+    }
+
+    return NextResponse.json(quizInPreferedLang);
 }

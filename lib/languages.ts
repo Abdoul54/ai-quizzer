@@ -139,4 +139,19 @@ export const languageCodes = [
     "ru",
 ] as const;
 
+export const getLanguage = (code: LanguageCode) => {
+    return languages.find(l => l.code === code);
+};
+
+export const getDirection = (code: LanguageCode): Direction | undefined => {
+    return languages.find(l => l.code === code)?.direction;
+};
+
+export const getLanguageLabel = (
+    targetLanguage: LanguageCode,
+    uiLanguage: LanguageCode
+): string | undefined => {
+    return languages.find(l => l.code === targetLanguage)?.labels[uiLanguage];
+};
+
 export type LanguageCode = typeof languageCodes[number];

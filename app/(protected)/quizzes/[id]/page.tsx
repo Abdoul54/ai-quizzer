@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { difficultyLevel, difficultyLevels, questionType, statuses } from "@/components/cards/quiz-card";
+import { difficultyLevels, questionType, statuses } from "@/components/cards/quiz-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { useQuiz } from "@/hooks/api/use-quiz";
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs";
-import { languages } from "@/lib/languages";
+import { useSession } from "@/lib/auth-client";
+import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
 import {
     BookOpen,
     Gauge,
     Hash,
     Layers,
-    Globe,
     MessageSquareQuote,
     Play,
     Settings2,
@@ -53,16 +52,18 @@ const Page = () => {
 
     const { id } = useParams()
     const router = useRouter()
+    const { data } = useSession()
+    const userLang = data?.user?.language || 'en'
 
-    const { data } = useQuiz(String(id))
+    const { data: quiz } = useQuiz(String(id))
 
     useSetBreadcrumbs([
         { label: "Home", href: "/" },
         { label: "Quizzes", href: "/quizzes" },
-        { label: data?.title || String(id) },
+        { label: quiz?.title || String(id) },
     ]);
 
-    const difficulty = difficultyLevels?.find(diff => diff?.value === data?.difficulty)?.label
+    const difficulty = difficultyLevels?.find(diff => diff?.value === quiz?.difficulty)?.label
 
 
     return (
@@ -70,7 +71,7 @@ const Page = () => {
             <div className="flex flex-col gap-2 w-full p-4">
                 <div className="flex items-start justify-between">
                     <h1 className="text-1xl font-bold tracking-tight">
-                        {data?.title}
+                        {quiz?.title}
                     </h1>
                     <div className="flex gap-2">
 
@@ -84,20 +85,20 @@ const Page = () => {
                         </Button>
                     </div>
                 </div>
-                {data?.description && (
+                {quiz?.description && (
                     <p className="mt-2 text-muted-foreground ">
-                        {data.description}
+                        {quiz.description}
                     </p>
                 )}
                 <div className="flex flex-wrap gap-3">
-                    {data?.questionCount && (
+                    {quiz?.questionCount && (
                         <Badge variant="outline" className="rounded bg-background">
                             <Hash className="w-3 h-3 mr-1" />
-                            {data.questionCount} Questions
+                            {quiz.questionCount} Questions
                         </Badge>
                     )}
 
-                    {data?.difficulty && (
+                    {quiz?.difficulty && (
                         <Badge variant="outline" className="rounded bg-warning/10 text-warning border-warning">
                             <Gauge className="w-3 h-3 mr-1" />
                             {difficulty}
@@ -130,25 +131,25 @@ const Page = () => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-5">
-                        {data?.status && (
+                        {quiz?.status && (
                             <MetaRow
-                                icon={statuses[data?.status as keyof typeof statuses]?.icon || Settings2}
+                                icon={statuses[quiz?.status as keyof typeof statuses]?.icon || Settings2}
                                 label="Status"
-                                value={statuses[data?.status as keyof typeof statuses]?.label || data?.status}
+                                value={statuses[quiz?.status as keyof typeof statuses]?.label || quiz?.status}
                             />
                         )}
-                        {data?.topic && (
+                        {quiz?.topic && (
                             <MetaRow
                                 icon={BookOpen}
                                 label="Topic"
-                                value={data.topic}
+                                value={quiz.topic}
                             />
                         )}
 
-                        {data?.questionTypes && (
+                        {quiz?.questionTypes && (
                             <MetaRow icon={Layers} label="Question Types">
                                 <div className="flex flex-wrap gap-2 mt-1">
-                                    {data.questionTypes.map((type: string, i: number) => (
+                                    {quiz.questionTypes.map((type: string, i: number) => (
                                         <Badge key={i} variant="outline" className="text-xs rounded bg-info/10 text-info border-info">
                                             {questionType[type as keyof typeof questionType] || type}
                                         </Badge>
@@ -157,11 +158,23 @@ const Page = () => {
                             </MetaRow>
                         )}
 
-                        {data?.additionalPrompt && (
+                        {quiz?.languages && (
+                            <MetaRow icon={Layers} label="Question Types">
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {quiz.languages.map((lang: string, i: number) => (
+                                        <Badge key={i} variant="outline" className="text-xs rounded bg-info/10 text-info border-info">
+                                            {getLanguageLabel(lang as LanguageCode, userLang as LanguageCode)}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </MetaRow>
+                        )}
+
+                        {quiz?.additionalPrompt && (
                             <MetaRow
                                 icon={MessageSquareQuote}
                                 label="Additional Prompt"
-                                value={data.additionalPrompt}
+                                value={quiz.additionalPrompt}
                             />
                         )}
 
