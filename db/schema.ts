@@ -170,7 +170,7 @@ export const question = pgTable("question", {
         .notNull()
         .references(() => quiz.id, { onDelete: "cascade" }),
     questionType: questionTypeEnum("question_type").notNull(),
-    questionText: text("question_text").notNull(),
+    questionText: jsonb("question_text").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()
@@ -183,7 +183,7 @@ export const options = pgTable("options", {
     questionId: uuid("question_id")
         .notNull()
         .references(() => question.id, { onDelete: "cascade" }),
-    optionText: text("option_text").notNull(),
+    optionText: jsonb("option_text").notNull(),
     isCorrect: boolean("is_correct").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -225,7 +225,6 @@ export const conversations = pgTable("conversations", {
         .notNull(),
 });
 
-// jsonb content to support text, tool calls, and tool results (Vercel AI SDK CoreMessage shape)
 export const message = pgTable("message", {
     id: uuid("id").defaultRandom().primaryKey(),
     conversationId: uuid("conversation_id")
