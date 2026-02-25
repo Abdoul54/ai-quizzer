@@ -11,8 +11,6 @@ export function proxy(request: NextRequest) {
 
     const session = getSessionCookie(request);
 
-    console.log({ session });
-
     if (!session) {
         const url = request.nextUrl.clone();
         url.pathname = "/login";
