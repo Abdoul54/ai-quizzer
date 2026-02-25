@@ -67,7 +67,7 @@ export const auth = betterAuth({
     ],
 
     advanced: {
-        useSecureCookies: process.env.NODE_ENV === "production",
+        useSecureCookies: process.env.SECURE_COOKIES === "true",
     },
 
     trustedOrigins: process.env.TRUSTED_ORIGINS?.split(",") ?? [],

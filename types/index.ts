@@ -56,8 +56,15 @@ export type OptionWithQuestion = Option & {
     question: Question;
 };
 
-export type QuestionWithOptions = Question & {
-    options: Option[];
+export type QuestionWithOptions = {
+    id: string;
+    questionText: string;
+    questionType: QuestionType;
+    options: {
+        id: string;
+        optionText: string;
+        isCorrect: boolean;
+    }[]
 };
 
 export type MessageWithConversation = Message & {
