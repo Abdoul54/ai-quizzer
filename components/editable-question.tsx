@@ -132,7 +132,7 @@ export const EditableQuestion = ({
         <Card
             className={cn(
                 "w-full transition-opacity",
-                isLocked && "opacity-60 pointer-events-none"
+                // isLocked && "opacity-60 pointer-events-none"
             )}
         >
             <CardHeader className="flex items-center justify-between">
