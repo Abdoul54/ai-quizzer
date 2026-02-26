@@ -4,6 +4,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { NextRequest } from "next/server";
+import { distractionMinion, questionMinion, singleOptionMinion, typeMinion } from "@/agents/minions";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -44,15 +45,6 @@ const improveSchema = z.discriminatedUnion("scope", [
     }),
 ]);
 
-const questionTextSchema = z.object({ questionText: z.string() });
-const singleOptionSchema = z.object({ optionText: z.string() });
-const changeTypeSchema = z.object({
-    questionText: z.string(),
-    questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
-    options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-});
-const addDistractorSchema = z.object({ optionText: z.string() });
-
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -67,69 +59,29 @@ export async function POST(req: NextRequest) {
 
     // ── question_text ─────────────────────────────────────────────────────────
     if (data.scope === "question_text") {
-        const { object } = await generateObject({
-            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
-            schema: questionTextSchema,
-            system: `You are a quiz question editor. Rewrite the question text to be clearer and more precise. Do not change the intent or difficulty.`,
-            prompt: `Improve this question text:\n\n"${data.question.questionText}"\n\nContext — type: ${data.question.questionType}, options: ${data.question.options.map(o => o.optionText).join(", ")}`,
-        });
+        const object = await questionMinion(data)
         return Response.json(object);
     }
 
     // ── single_option ─────────────────────────────────────────────────────────
     if (data.scope === "single_option") {
         // Strip isCorrect — the AI has no business knowing which answer is correct
-        const { object } = await generateObject({
-            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
-            schema: singleOptionSchema,
-            system: `You are a quiz question editor. Improve this answer option to be clearer and more plausible. Do not change its meaning.`,
-            prompt: `Question: "${data.option.isCorrect
-                ? "Improve this correct answer to be clear and precise."
-                : "Improve this distractor to be plausible but clearly wrong."
-                }"\n\nQuestion: "${data.questionText}"\nOption: "${data.option.optionText}"`,
-        });
+        const object = await singleOptionMinion(data)
+
         // isCorrect reattached from the original — never derived from AI output
         return Response.json({ optionText: object.optionText, isCorrect: data.option.isCorrect });
     }
 
     // ── change_type ───────────────────────────────────────────────────────────
     if (data.scope === "change_type") {
-        const { object } = await generateObject({
-            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
-            schema: changeTypeSchema,
-            system: `
-You are an expert quiz editor that converts questions between types with strict structural rules.
-
-TYPE CONVERSION RULES:
-
-IF new type = true_false:
-- Discard all existing options.
-- Create exactly 2 options: "True" and "False", one correct.
-- Rewrite the question as a clear factual statement.
-
-IF new type = single_choice:
-- Create 3–5 options total, exactly ONE correct.
-- Rewrite question to ask for one answer.
-
-IF new type = multiple_choice:
-- Create 3–5 options total, at least TWO correct.
-- Rewrite question to indicate multiple answers (e.g. "Which of the following...").`,
-            prompt: `Convert this question from ${data.question.questionType} to ${data.newType}:\n\n${JSON.stringify(data.question, null, 2)}`,
-        });
+        const object = await typeMinion(data)
 
         return Response.json(enforceStructure(object, data.newType));
     }
 
     // ── add_distractor ────────────────────────────────────────────────────────
     if (data.scope === "add_distractor") {
-        const existingOptions = data.question.options.map(o => o.optionText);
-
-        const { object } = await generateObject({
-            model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
-            schema: addDistractorSchema,
-            system: `You are a quiz question editor. Generate a single new plausible but incorrect answer option (distractor) for the given question. It must be clearly wrong but not obviously so. Do not duplicate any existing options.`,
-            prompt: `Question: "${data.question.questionText}"\n\nExisting options:\n${existingOptions.map(o => `- ${o}`).join("\n")}\n\nGenerate one new distractor.`,
-        });
+        const object = await distractionMinion(data)
 
         // Always incorrect — it's a distractor by definition
         return Response.json({ optionText: object.optionText, isCorrect: false });
