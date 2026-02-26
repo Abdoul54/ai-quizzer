@@ -108,7 +108,7 @@ export default function SignUpPage() {
                         </div>
                     </CardContent>
 
-                    <CardFooter className="flex flex-col gap-3">
+                    <CardFooter className="flex flex-col gap-3 mt-4">
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {loading ? "Creating account…" : "Create account"}
@@ -117,7 +117,7 @@ export default function SignUpPage() {
                         <p className="text-center text-sm text-muted-foreground">
                             Already have an account?{" "}
                             <Link
-                                href="/sign-in"
+                                href="/login"
                                 className="font-medium text-primary underline-offset-4 hover:underline"
                             >
                                 Sign in

@@ -1,81 +1,106 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 export default function Chat() {
-  const [input, setInput] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const { messages, sendMessage } = useChat();
-
-  async function handleUpload() {
-    if (!file) return;
-
-    setUploading(true);
-
-    const form = new FormData();
-    form.append("file", file);
-
-    await fetch("/api/upload", {
-      method: "POST",
-      body: form,
-    });
-
-    setUploading(false);
-    alert("Uploaded & embedded");
-  }
 
   return (
-    <div className="flex flex-col w-full max-w-xl mx-auto py-10">
+    <div className="@container/main flex flex-1 flex-col gap-2">
+      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+          <Card className="@container/card animated-gradient">
+            <CardHeader>
+              <CardDescription>Total Revenue</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                $1,250.00
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <TrendingUp />
+                  +12.5%
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Trending up this month <TrendingUp className="size-4" />
+              </div>
+              <div className="text-muted-foreground">
+                Visitors for the last 6 months
+              </div>
+            </CardFooter>
+          </Card>
+          <Card className="@container/card">
+            <CardHeader>
+              <CardDescription>New Customers</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                1,234
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <TrendingDown />
+                  -20%
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Down 20% this period <TrendingDown className="size-4" />
+              </div>
+              <div className="text-muted-foreground">
+                Acquisition needs attention
+              </div>
+            </CardFooter>
+          </Card>
+          <Card className="@container/card">
+            <CardHeader>
+              <CardDescription>Active Accounts</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                45,678
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <TrendingUp />
+                  +12.5%
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Strong user retention <TrendingUp className="size-4" />
+              </div>
+              <div className="text-muted-foreground">Engagement exceed targets</div>
+            </CardFooter>
+          </Card>
+          <Card className="@container/card">
+            <CardHeader>
+              <CardDescription>Growth Rate</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                4.5%
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <TrendingUp />
+                  +4.5%
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Steady performance increase <TrendingUp className="size-4" />
+              </div>
+              <div className="text-muted-foreground">Meets growth projections</div>
+            </CardFooter>
+          </Card>
+        </div>
 
-      {/* upload */}
-      <div className="border p-4 mb-6 rounded">
-        <div className="font-bold mb-2">Upload PDF</div>
-
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="ml-2 border px-3 py-1"
-        >
-          {uploading ? "Uploading..." : "Upload"}
-        </button>
+        <div className="grid grid-cols-6 gap-4">
+          <Card className="flex-1 h-64 col-span-4 "></Card>
+          <Card className="flex-1 h-64 col-span-2 "></Card>
+        </div>
       </div>
-
-      {/* messages */}
-      <div className="space-y-4 mb-24">
-        {messages.map((m) => (
-          <div key={m.id}>
-            <b>{m.role}:</b>{" "}
-            {m.parts.map((p, i) =>
-              p.type === "text" ? <span key={i}>{p.text}</span> : null
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* chat input */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          sendMessage({ text: input });
-          setInput("");
-        }}
-      >
-        <input
-          className="fixed bottom-6 w-full max-w-xl p-3 border rounded"
-          value={input}
-          placeholder="Ask about your docs..."
-          onChange={(e) => setInput(e.target.value)}
-        />
-      </form>
     </div>
   );
 }
