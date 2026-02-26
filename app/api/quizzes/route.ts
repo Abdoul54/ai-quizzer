@@ -5,8 +5,7 @@ import { createQuizSchema } from "@/lib/validators";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { architect } from "@/agents/architect";
-import { builder } from "@/agents/builder";
+import { quizQueue } from "@/lib/queue";
 
 export async function GET() {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -32,64 +31,34 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await req.json();
     const parsed = createQuizSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
 
-    const encoder = new TextEncoder();
+    // Insert quiz shell with "queued" status
+    const [created] = await db
+        .insert(quiz)
+        .values({
+            userId: session.user.id,
+            ...parsed.data,
+            status: "queued",
+        })
+        .returning();
 
-    const stream = new ReadableStream({
-        async start(controller) {
-            const send = (event: string, data: object) => {
-                controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-            };
+    await db.insert(conversations).values({ quizId: created.id });
 
-            try {
-                // Step 0 — Save quiz shell to DB
-                send("progress", { step: 0 });
-                const [created] = await db.insert(quiz)
-                    .values({ userId: session.user.id, ...parsed.data })
-                    .returning();
+    // Enqueue — job survives tab closes, server restarts, network drops
+    await quizQueue.add(
+        "generate",
+        { quizId: created.id, input: parsed.data },
+        { jobId: created.id } // idempotent: same quiz can't be queued twice
+    );
 
-                await db.insert(conversations).values({ quizId: created.id });
-
-                // Step 1 — Architect agent
-                send("progress", { step: 1 });
-                const architecture = await architect({
-                    documents: parsed.data.documentIds ?? [],
-                    topic: parsed.data.topic,
-                    questionCount: parsed.data.questionCount || 10,
-                    difficulty: parsed.data.difficulty || "medium",
-                    questionTypes: parsed.data.questionTypes || ["true_false", "single_choice", "multiple_choice"],
-                    language: parsed.data.defaultLanguage,
-                    additionalPrompt: parsed.data.additionalPrompt,
-                });
-                await db.update(quiz).set({ architecture }).where(eq(quiz.id, created.id));
-
-                // Step 2 — Builder agent
-                send("progress", { step: 2 });
-                await builder({
-                    quizId: created.id,
-                    architecture,
-                    documentIds: parsed.data.documentIds ?? [],
-                });
-
-                send("done", { quizId: created.id });
-            } catch (err) {
-                send("error", { message: err instanceof Error ? err.message : "Something went wrong" });
-            } finally {
-                controller.close();
-            }
-        },
-    });
-
-    return new Response(stream, {
-        headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    });
+    return NextResponse.json({ quizId: created.id }, { status: 202 });
 }

@@ -1,5 +1,7 @@
-# Spin up only the database for local development.
-# Run the Next.js app normally with: npm run dev
+# Spin up only the database and Redis for local development.
+# Run the Next.js app and worker normally with:
+#   npm run dev
+#   npx tsx workers/index.ts
 #
 # Usage:
 #   docker compose -f docker-compose.dev.yml up -d
@@ -7,7 +9,7 @@
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: ai-quizzer-db
+    container_name: ai-quizzer-db-dev
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-quizzer}
@@ -20,6 +22,18 @@ services:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quizzer} -d ${POSTGRES_DB:-ai_quizzer}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-quizzer-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -10,6 +10,26 @@ export const quizKeys = {
     detail: (id: string) => ["quizzes", id] as const,
 };
 
+export const conversationKeys = {
+    byQuiz: (quizId: string) => ["conversations", "quiz", quizId] as const,
+    detail: (id: string) => ["conversations", id] as const,
+};
+
+export const draftKeys = {
+    latestByQuiz: (quizId: string) => ["drafts", "quiz", quizId, "latest"] as const,
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type QuizStatus =
+    | "queued"
+    | "architecting"
+    | "building"
+    | "draft"
+    | "published"
+    | "archived"
+    | "failed";
+
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useQuizzes() {
@@ -19,6 +39,7 @@ export function useQuizzes() {
             const { data } = await api.get<QuizWithRelations[]>("/quizzes");
             return data;
         },
+        // No refetchInterval — SSE updates the cache directly during generation
     });
 }
 
@@ -44,49 +65,74 @@ export function useCreateQuiz() {
             onError?: (message: string) => void;
         }
     ) => {
-        const response = await fetch("/api/quizzes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok || !response.body) {
+        // POST returns { quizId } immediately — job is queued in BullMQ
+        let quizId: string;
+        try {
+            const { data } = await api.post<{ quizId: string }>("/quizzes", payload);
+            quizId = data.quizId;
+        } catch {
             callbacks.onError?.("Failed to start quiz creation");
             return;
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        // One fetch to pull the new quiz into the list cache (status: "queued")
+        // It will appear in the list immediately before generation completes
+        queryClient.invalidateQueries({ queryKey: quizKeys.all });
 
-        let eventType = "";
-        let eventData = "";
+        // Step 0 — saved, job queued
+        callbacks.onStep?.(0);
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-
-            for (const line of chunk.split("\n")) {
-                if (line.startsWith("event: ")) {
-                    eventType = line.slice(7).trim();
-                } else if (line.startsWith("data: ")) {
-                    eventData = line.slice(6).trim();
-                } else if (line === "" && eventType && eventData) {
-                    const data = JSON.parse(eventData);
-
-                    if (eventType === "progress") callbacks.onStep?.(data.step);
-                    if (eventType === "done") {
-                        queryClient.invalidateQueries({ queryKey: quizKeys.all });
-                        callbacks.onSuccess?.(data.quizId);
-                    }
-                    if (eventType === "error") callbacks.onError?.(data.message);
-
-                    eventType = "";
-                    eventData = "";
+        // Update just this quiz's status in the existing cache — no network request
+        const updateStatus = (status: QuizStatus) => {
+            queryClient.setQueryData(
+                quizKeys.all,
+                (old: QuizWithRelations[] | undefined) => {
+                    if (!old) return old;
+                    return old.map((q) => q.id === quizId ? { ...q, status } : q);
                 }
+            );
+        };
+
+        // Open SSE — worker publishes to Redis, server pushes here instantly
+        const es = new EventSource(`/api/quizzes/${quizId}/status`);
+        let completed = false;
+
+        es.onmessage = (event) => {
+            const { status, step, errorMessage } = JSON.parse(event.data) as {
+                status: QuizStatus;
+                step: number;
+                errorMessage: string | null;
+            };
+
+            // Never go backwards — handles skipped steps on fast jobs
+            if (step >= 0) callbacks.onStep?.(step);
+
+            // Update the badge in the list instantly — zero network calls
+            updateStatus(status);
+
+            if (status === "draft" || status === "published") {
+                completed = true;
+                es.close();
+                // One final fetch to hydrate the full quiz data (questions, options, etc.)
+                queryClient.invalidateQueries({ queryKey: quizKeys.all });
+                callbacks.onSuccess?.(quizId);
+                return;
             }
-        }
+
+            if (status === "failed") {
+                completed = true;
+                es.close();
+                callbacks.onError?.(errorMessage ?? "Quiz generation failed. Please try again.");
+            }
+        };
+
+        es.onerror = () => {
+            es.close();
+            // Guard against onerror firing after clean server-side close on success
+            if (!completed) {
+                callbacks.onError?.("Lost connection to server. Please refresh and try again.");
+            }
+        };
     };
 
     return { createQuiz };
@@ -122,17 +168,6 @@ export function useDeleteQuiz() {
     });
 }
 
-// ─── Conversation Keys ────────────────────────────────────────────────────────
-
-export const conversationKeys = {
-    byQuiz: (quizId: string) => ["conversations", "quiz", quizId] as const,
-    detail: (id: string) => ["conversations", id] as const,
-};
-
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-// types.ts
-
-
 export function useQuizConversation(quizId: string) {
     return useQuery({
         queryKey: conversationKeys.byQuiz(quizId),
@@ -143,15 +178,6 @@ export function useQuizConversation(quizId: string) {
         enabled: !!quizId,
     });
 }
-
-// ─── Draft Keys ───────────────────────────────────────────────────────────────
-
-export const draftKeys = {
-    latestByQuiz: (quizId: string) => ["drafts", "quiz", quizId, "latest"] as const,
-};
-
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-
 
 export function useLatestDraft(quizId: string) {
     return useQuery({

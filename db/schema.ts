@@ -19,7 +19,15 @@ export const languageEnum = pgEnum("language", languageCodes);
 export const defaultLanguageEnum = pgEnum("language", languageCodes);
 export const questionTypeEnum = pgEnum("question_type", ["true_false", "single_choice", "multiple_choice"]);
 export const quizDifficultyEnum = pgEnum("quiz_difficulty", ["easy", "medium", "hard"]);
-export const quizStatusEnum = pgEnum("quiz_status", ["draft", "published", "archived"]);
+export const quizStatusEnum = pgEnum("quiz_status", [
+    "queued",
+    "architecting",  // ← add
+    "building",      // ← add
+    "draft",
+    "published",
+    "archived",
+    "failed"
+]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "tool"]);
 
 
@@ -141,6 +149,7 @@ export const quiz = pgTable("quiz", {
     languages: defaultLanguageEnum('languages').array(),
     additionalPrompt: text("additional_prompt"),
     architecture: text("architecture"),
+    errorMessage: text("error_message"),
     documentIds: uuid("document_ids").array().default([]),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

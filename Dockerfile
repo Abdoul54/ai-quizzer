@@ -31,6 +31,7 @@ ENV QUIZ_EDITOR=build-time-placeholder
 ENV XAPI_ENDPOINT=http://localhost
 ENV XAPI_KEY=build-time-placeholder
 ENV XAPI_SECRET=build-time-placeholder
+ENV REDIS_URL=redis://localhost:6379
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

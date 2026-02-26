@@ -18,6 +18,25 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: ai-quizzer-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+      --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: ai-quizzer-pgadmin
@@ -62,16 +81,54 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      REDIS_URL: redis://redis:6379
       NODE_ENV: production
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ai-quizzer-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      WORKER_HEALTH_PORT: 3001
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:
   pgadmin_data:
+  redis_data:
