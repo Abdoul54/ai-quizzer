@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { documentChunks, documents } from '@/db/schema';
+import logger from '@/lib/logger';
+
+const toolLog = logger.child({ component: "tool", tool: "getDocumentOverview" });
 
 export const getDocumentOverview = tool({
     description:
@@ -13,9 +16,11 @@ export const getDocumentOverview = tool({
     }),
     execute: async ({ documentIds, chunksPerDocument }) => {
         if (!documentIds.length) {
+            toolLog.warn("getDocumentOverview called with no documentIds");
             return 'RETRIEVAL_FAILED: No document IDs provided.';
         }
 
+        const start = Date.now();
         const allChunks: { fileName: string; content: string }[] = [];
 
         for (const documentId of documentIds) {
@@ -30,12 +35,28 @@ export const getDocumentOverview = tool({
                 .orderBy(documentChunks.createdAt)
                 .limit(chunksPerDocument);
 
+            toolLog.debug({
+                documentId,
+                chunksReturned: result.length,
+                chunksRequested: chunksPerDocument,
+            }, "Document overview fetched");
+
             allChunks.push(...result);
         }
 
         if (!allChunks.length) {
+            toolLog.warn({
+                documentIds,
+                durationMs: Date.now() - start,
+            }, "getDocumentOverview returned no chunks — documents may not be processed yet");
             return 'RETRIEVAL_FAILED: No chunks found for the provided document IDs. The documents may not have been processed yet.';
         }
+
+        toolLog.debug({
+            documentCount: documentIds.length,
+            totalChunks: allChunks.length,
+            durationMs: Date.now() - start,
+        }, "getDocumentOverview completed");
 
         return allChunks
             .map(r => `[${r.fileName}]\n${r.content}`)

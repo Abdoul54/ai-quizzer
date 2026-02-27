@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { editor } from "@/agents/editor";
 import { NextRequest } from "next/server";
+import { apiLogger } from "@/lib/logger";
 
 export async function POST(
     req: NextRequest,
@@ -14,6 +15,8 @@ export async function POST(
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const log = apiLogger("/api/quizzes/[id]/conversation POST", session.user.id);
+
     const { messages } = await req.json();
 
     const quizExists = await db.query.quiz.findFirst({
@@ -21,9 +24,12 @@ export async function POST(
         columns: { id: true, documentIds: true, architecture: true },
     });
 
-    if (!quizExists) return Response.json({ error: "Quiz not found" }, { status: 404 });
+    if (!quizExists) {
+        log.warn({ quizId: id }, "Quiz not found for conversation");
+        return Response.json({ error: "Quiz not found" }, { status: 404 });
+    }
 
-    // get or create conversation
+    // Get or create conversation
     let conversation = await db.query.conversations.findFirst({
         where: eq(conversations.quizId, id),
     });
@@ -34,9 +40,10 @@ export async function POST(
             .values({ quizId: id })
             .returning();
         conversation = created;
+        log.debug({ quizId: id, conversationId: created.id }, "Conversation created");
     }
 
-    // save the latest user message
+    // Save the latest user message
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lastUserMessage = [...messages].reverse().find((m: any) => m.role === "user");
     if (lastUserMessage) {
@@ -47,6 +54,13 @@ export async function POST(
         });
     }
 
+    log.info({
+        quizId: id,
+        conversationId: conversation.id,
+        messageCount: messages.length,
+        documentCount: quizExists.documentIds?.length ?? 0,
+    }, "Editor conversation started");
+
     const stream = await editor({
         quizId: id,
         documentIds: quizExists.documentIds ?? [],
@@ -54,10 +68,10 @@ export async function POST(
         messages,
     });
 
-    // save assistant response after streaming completes
     const result = stream.toUIMessageStreamResponse();
 
-    stream.consumeStream().then(async () => {
+    // Save assistant response after streaming completes
+    Promise.resolve(stream.consumeStream()).then(async () => {
         const text = await stream.text;
         if (text) {
             await db.insert(message).values({
@@ -65,7 +79,10 @@ export async function POST(
                 role: "assistant",
                 content: [{ type: "text", text }],
             });
+            log.debug({ quizId: id, conversationId: conversation!.id }, "Assistant response saved");
         }
+    }).catch((err) => {
+        log.error({ quizId: id, conversationId: conversation!.id, err }, "Failed to save assistant response");
     });
 
     return result;
@@ -82,7 +99,10 @@ export async function GET(
 
     const conversation = await db.query.conversations.findFirst({
         where: eq(conversations.quizId, id),
-        with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] }, quiz: { columns: { title: true, defaultLanguage: true } } },
+        with: {
+            messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] },
+            quiz: { columns: { title: true, defaultLanguage: true } },
+        },
     });
 
     return Response.json(conversation ?? null);

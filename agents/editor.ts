@@ -3,6 +3,7 @@ import { openai } from '@ai-sdk/openai';
 import { getDraft } from '@/lib/tools/get-draft';
 import { updateDraft } from '@/lib/tools/update-draft';
 import { searchDocs } from '@/lib/tools/search-docs';
+import { agentLogger } from '@/lib/logger';
 
 interface EditorInput {
     quizId: string;
@@ -12,15 +13,37 @@ interface EditorInput {
 }
 
 export const editor = async ({ quizId, documentIds = [], architecture, messages }: EditorInput) => {
+    const log = agentLogger('editor', quizId);
     const modelMessages = await convertToModelMessages(messages ?? []);
     const hasDocuments = documentIds.length > 0;
     const hasArchitecture = !!architecture;
 
-    return streamText({
+    log.info({
+        quizId,
+        documentCount: documentIds.length,
+        hasArchitecture,
+        messageCount: messages?.length ?? 0,
+    }, 'Editor invoked');
+
+    const stream = streamText({
         model: openai(process.env.QUIZ_EDITOR || 'gpt-4o-mini'),
         stopWhen: stepCountIs(6),
         toolChoice: 'auto',
         tools: { getDraft, updateDraft, searchDocs },
+        onError: ({ error }) => {
+            log.error({ quizId, err: error }, 'Editor stream error');
+        },
+        onFinish: ({ usage, steps }) => {
+            const toolCalls = steps.flatMap(s => s.toolCalls ?? []);
+            log.info({
+                quizId,
+                steps: steps.length,
+                toolCallCount: toolCalls.length,
+                toolsUsed: [...new Set(toolCalls.map(t => t.toolName))],
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            }, 'Editor stream finished');
+        },
         system: `You are a quiz editor assistant. You help users modify their quiz questions through conversation.
 
 TOOLS:
@@ -59,4 +82,6 @@ ${hasArchitecture ? '- Stay consistent with the quiz architecture below. Respect
             ...modelMessages,
         ],
     });
+
+    return stream;
 };

@@ -2,13 +2,11 @@ import "dotenv/config";
 import { createServer } from "http";
 import { startWorker } from "./quiz-generation.worker";
 import { startMinionWorker } from "./minion.worker";
+import logger from "@/lib/logger";
 
 const worker = startWorker();
 const minionWorker = startMinionWorker();
 
-// ── Health check server ───────────────────────────────────────────────────────
-// Docker uses this to determine if the worker is alive.
-// Responds 200 when the worker is running, 503 after shutdown begins.
 let healthy = true;
 
 const healthServer = createServer((_req, res) => {
@@ -23,20 +21,18 @@ const healthServer = createServer((_req, res) => {
 
 const HEALTH_PORT = Number(process.env.WORKER_HEALTH_PORT ?? 3001);
 healthServer.listen(HEALTH_PORT, () => {
-    console.log(`[worker] Health check listening on :${HEALTH_PORT}`);
+    logger.info({ port: HEALTH_PORT }, "Health check server listening");
 });
 
-// ── Graceful shutdown ─────────────────────────────────────────────────────────
 async function shutdown(signal: string) {
-    console.log(`[worker] Received ${signal}, shutting down gracefully...`);
+    logger.info({ signal }, "Shutdown signal received, shutting down gracefully");
     healthy = false;
 
     await new Promise((r) => setTimeout(r, 2_000));
-
     await Promise.all([worker.close(), minionWorker.close()]);
     healthServer.close();
 
-    console.log("[worker] Shutdown complete.");
+    logger.info("Shutdown complete");
     process.exit(0);
 }
 
@@ -44,11 +40,11 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 process.on("uncaughtException", (err) => {
-    console.error("[worker] Uncaught exception:", err);
+    logger.fatal({ err }, "Uncaught exception");
     process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-    console.error("[worker] Unhandled rejection:", reason);
+    logger.fatal({ reason }, "Unhandled rejection");
     process.exit(1);
 });

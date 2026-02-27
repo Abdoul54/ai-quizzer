@@ -5,6 +5,9 @@ import { db } from '@/db';
 import { draft } from '@/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '@/lib/logger';
+
+const toolLog = logger.child({ component: "tool", tool: "updateDraft" });
 
 const questionSchema = z.object({
     id: z.string().optional(),
@@ -30,7 +33,12 @@ Never reconstruct the full questions array yourself.`,
         })),
     }),
     execute: async ({ quizId, changes }) => {
-        // Load the latest draft
+        const added = changes.filter(c => !c.id && !c.delete).length;
+        const edited = changes.filter(c => c.id && !c.delete).length;
+        const deleted = changes.filter(c => c.id && c.delete).length;
+
+        toolLog.debug({ quizId, added, edited, deleted, totalChanges: changes.length }, "updateDraft called");
+
         const [current] = await db
             .select()
             .from(draft)
@@ -38,7 +46,10 @@ Never reconstruct the full questions array yourself.`,
             .orderBy(desc(draft.createdAt))
             .limit(1);
 
-        if (!current) return 'DRAFT_NOT_FOUND';
+        if (!current) {
+            toolLog.warn({ quizId }, "updateDraft — no draft found");
+            return 'DRAFT_NOT_FOUND';
+        }
 
         const existing = (current.content as { questions: any[] }).questions;
 
@@ -81,6 +92,14 @@ Never reconstruct the full questions array yourself.`,
 
         await db.insert(draft).values({ quizId, content: { questions: updated } });
 
-        return `DRAFT_UPDATED: ${changes.length} change(s) applied. Draft now has ${updated.length} questions.`;
+        toolLog.info({
+            quizId,
+            added,
+            edited,
+            deleted,
+            finalQuestionCount: updated.length,
+        }, "updateDraft completed");
+
+        return `DRAFT_UPDATED: ${changes.length} change(s) applied.`;
     },
 });

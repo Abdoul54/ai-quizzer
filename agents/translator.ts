@@ -2,6 +2,7 @@
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { openai } from '@ai-sdk/openai';
+import { agentLogger } from '@/lib/logger';
 
 const translationItem = z.object({
     lang: z.string(),
@@ -14,13 +15,7 @@ const translatedQuizOutput = Output.object({
             z.object({
                 id: z.uuidv4(),
                 questionText: z.array(translationItem),
-
-                questionType: z.enum([
-                    'true_false',
-                    'single_choice',
-                    'multiple_choice'
-                ]),
-
+                questionType: z.enum(['true_false', 'single_choice', 'multiple_choice']),
                 options: z.array(
                     z.object({
                         id: z.uuidv4(),
@@ -40,11 +35,17 @@ export const translator = async ({
     languages: string[];
     draft: any;
 }) => {
+    const log = agentLogger('translator');
+    const questionCount = draft?.length ?? 0;
+
+    log.info({ languages, questionCount }, 'Translator started');
+
+    const start = Date.now();
+
     try {
         const { output } = await generateText({
             model: openai(process.env.TRANSLATOR || 'gpt-4o-mini'),
             output: translatedQuizOutput,
-
             system: `
 You are a professional quiz translator.
 
@@ -59,7 +60,6 @@ Rules:
 - Do not skip any language.
 - Preserve correctness flags.
 `,
-
             prompt: `
 Target languages:
 ${languages.join(', ')}
@@ -71,9 +71,16 @@ ${JSON.stringify(draft, null, 2)}
 `,
         });
 
+        log.info({
+            languages,
+            questionCount,
+            translatedCount: output?.questions?.length ?? 0,
+            durationMs: Date.now() - start,
+        }, 'Translator completed');
+
         return output;
     } catch (err) {
-        console.error('TRANSLATOR ERROR:', err);
+        log.error({ languages, questionCount, err, durationMs: Date.now() - start }, 'Translator failed');
         throw err;
     }
 };

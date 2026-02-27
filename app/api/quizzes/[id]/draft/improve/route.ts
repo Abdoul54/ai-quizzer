@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { minionQueue } from "@/lib/queue";
+import { apiLogger } from "@/lib/logger";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -49,14 +50,19 @@ export async function POST(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: quizId } = await params;
+    const log = apiLogger("/api/quizzes/[id]/draft/improve POST", session.user.id);
 
     const body = await req.json();
     const parsed = improveSchema.safeParse(body);
+
     if (!parsed.success) {
+        log.warn({ quizId, errors: parsed.error.flatten() }, "Improve request validation failed");
         return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
     const job = await minionQueue.add("improve", { quizId, ...parsed.data });
+
+    log.info({ quizId, scope: parsed.data.scope, jobId: job.id }, "Minion job enqueued");
 
     return NextResponse.json({ jobId: job.id }, { status: 202 });
 }

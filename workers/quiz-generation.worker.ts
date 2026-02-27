@@ -5,6 +5,7 @@ import { quiz } from "@/db/schema";
 import { architect } from "@/agents/architect";
 import { builder } from "@/agents/builder";
 import { redis } from "@/lib/redis";
+import logger, { workerLogger } from "@/lib/logger";
 import type { QuizGenerationJobData } from "@/lib/queue";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -24,7 +25,6 @@ const STATUS_STEP: Record<QuizStatus, number> = {
     failed: -1,
 };
 
-// Errors that should NOT be retried — bad input, quota exceeded, etc.
 const UNRECOVERABLE_PATTERNS = [
     "invalid_api_key",
     "insufficient_quota",
@@ -39,12 +39,9 @@ function isUnrecoverable(err: unknown): boolean {
     return UNRECOVERABLE_PATTERNS.some((p) => msg.includes(p));
 }
 
-// Sanitize error — never expose internal details to the client
 function toUserMessage(err: unknown): string {
     if (!(err instanceof Error)) return "Quiz generation failed. Please try again.";
-
     const msg = err.message.toLowerCase();
-
     if (msg.includes("invalid_api_key") || msg.includes("authentication"))
         return "AI service configuration error. Please contact support.";
     if (msg.includes("insufficient_quota") || msg.includes("rate_limit"))
@@ -53,7 +50,6 @@ function toUserMessage(err: unknown): string {
         return "The provided documents or topic could not be processed. Please try different content.";
     if (msg.includes("timeout"))
         return "Quiz generation timed out. Please try again with fewer questions or simpler content.";
-
     return "Quiz generation failed. Please try again.";
 }
 
@@ -66,21 +62,23 @@ async function publish(
     await db.update(quiz).set({ status, ...dbExtra }).where(eq(quiz.id, quizId));
     await redis.publish(
         `quiz:${quizId}:status`,
-        JSON.stringify({
-            status,
-            step: STATUS_STEP[status],
-            ...publishExtra,
-        })
+        JSON.stringify({ status, step: STATUS_STEP[status], ...publishExtra })
     );
 }
 
 async function runJob(job: Job<QuizGenerationJobData>) {
     const { quizId, input } = job.data;
+    const log = workerLogger(job.id!, quizId);
+
+    log.info({ documentCount: input.documentIds?.length ?? 0 }, "Job started");
 
     try {
         // ── Step 1: Architect ────────────────────────────────────────────────
         await publish(quizId, "architecting");
         await job.updateProgress(10);
+
+        log.info("Architect started");
+        const architectStart = Date.now();
 
         const architecture = await architect({
             documents: input.documentIds ?? [],
@@ -92,7 +90,8 @@ async function runJob(job: Job<QuizGenerationJobData>) {
             additionalPrompt: input.additionalPrompt,
         });
 
-        // Save architecture silently — status hasn't changed, no publish needed
+        log.info({ durationMs: Date.now() - architectStart }, "Architect completed");
+
         await db.update(quiz).set({ architecture }).where(eq(quiz.id, quizId));
         await job.updateProgress(40);
 
@@ -100,20 +99,26 @@ async function runJob(job: Job<QuizGenerationJobData>) {
         await publish(quizId, "building");
         await job.updateProgress(50);
 
+        log.info("Builder started");
+        const builderStart = Date.now();
+
         await builder({
             quizId,
             architecture,
             documentIds: input.documentIds ?? [],
         });
 
+        log.info({ durationMs: Date.now() - builderStart }, "Builder completed");
+
         await job.updateProgress(100);
         await publish(quizId, "draft");
+
+        log.info("Job completed — quiz status: draft");
 
     } catch (err) {
         const userMessage = toUserMessage(err);
 
-        // Log full error server-side only
-        console.error(`[worker] Job ${job.id} failed for quizId ${quizId}:`, err);
+        log.error({ err, unrecoverable: isUnrecoverable(err) }, "Job failed");
 
         await publish(
             quizId,
@@ -122,7 +127,6 @@ async function runJob(job: Job<QuizGenerationJobData>) {
             { errorMessage: userMessage }
         );
 
-        // Unrecoverable errors: skip retries immediately
         if (isUnrecoverable(err)) {
             throw new UnrecoverableError(userMessage);
         }
@@ -138,41 +142,38 @@ async function processQuizGeneration(job: Job<QuizGenerationJobData>) {
             setTimeout(() => reject(new Error("timeout")), JOB_TIMEOUT_MS)
         ),
     ]);
-
-
 }
 
 export function startWorker() {
+    const workerLog = logger.child({ component: "worker" });
+
     const worker = new Worker<QuizGenerationJobData>(
         "quiz-generation",
         processQuizGeneration,
-        {
-            connection: redis,
-            concurrency: CONCURRENCY,
-        }
+        { connection: redis, concurrency: CONCURRENCY }
     );
 
     worker.on("active", (job) => {
-        console.log(`[worker] Job ${job.id} active — quizId: ${job.data.quizId}`);
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Job active");
     });
 
     worker.on("completed", (job) => {
-        console.log(`[worker] Job ${job.id} completed — quizId: ${job.data.quizId}`);
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Job completed");
     });
 
     worker.on("failed", (job, err) => {
         const attemptsLeft = job ? (job.opts.attempts ?? 1) - job.attemptsMade : 0;
-        console.error(
-            `[worker] Job ${job?.id} failed (${attemptsLeft} retries left):`,
-            err.message
+        workerLog.error(
+            { jobId: job?.id, quizId: job?.data.quizId, attemptsLeft, err },
+            "Job failed"
         );
     });
 
     worker.on("error", (err) => {
-        console.error("[worker] Worker error:", err);
+        workerLog.error({ err }, "Worker error");
     });
 
-    console.log(`[worker] Started (concurrency: ${CONCURRENCY})`);
+    workerLog.info({ concurrency: CONCURRENCY }, "Worker started");
 
     return worker;
 }

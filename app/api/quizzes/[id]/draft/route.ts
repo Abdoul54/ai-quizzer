@@ -1,50 +1,12 @@
 import { db } from "@/db";
-import { draft, quiz } from "@/db/schema";
+import { quiz, draft } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { uuidParamSchema } from "@/lib/validators";
 import { and, desc, eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
-
-type Params = { params: Promise<{ id: string }> };
-
-export async function GET(_req: NextRequest, { params }: Params) {
-    const session = await auth.api.getSession({ headers: await headers() });
-
-    if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const parsedParams = uuidParamSchema.safeParse(await params);
-
-    if (!parsedParams.success) {
-        return NextResponse.json({ error: "Invalid quiz ID" }, { status: 400 });
-    }
-
-    const { id } = parsedParams.data;
-
-    const quizExists = await db.query.quiz.findFirst({
-        where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
-        columns: { id: true },
-    });
-
-    if (!quizExists) {
-        return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
-    }
-
-    const latestDraft = await db.query.draft.findFirst({
-        where: eq(draft.quizId, id),
-        orderBy: [desc(draft.createdAt)],
-    });
-
-    if (!latestDraft) {
-        return NextResponse.json({ error: "No draft found" }, { status: 404 });
-    }
-
-    return NextResponse.json(latestDraft);
-}
+import { apiLogger } from "@/lib/logger";
 
 const optionSchema = z.object({
     id: z.string(),
@@ -111,20 +73,28 @@ export async function PATCH(
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const log = apiLogger("/api/quizzes/[id]/draft PATCH", session.user.id);
 
     const quizExists = await db.query.quiz.findFirst({
         where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
         columns: { id: true },
     });
 
-    if (!quizExists)
+    if (!quizExists) {
+        log.warn({ quizId: id }, "Draft PATCH — quiz not found");
         return NextResponse.json({ error: "Quiz is not found" }, { status: 404 });
+    }
 
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
+
     if (!parsed.success) {
+        log.warn({ quizId: id, errors: parsed.error.flatten() }, "Draft PATCH — validation failed");
         return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+
+    const op = parsed.data;
+    log.info({ quizId: id, operation: op.operation }, "Draft PATCH started");
 
     const [current] = await db
         .select()
@@ -133,13 +103,13 @@ export async function PATCH(
         .orderBy(desc(draft.createdAt))
         .limit(1);
 
-    if (!current) return Response.json({ error: "Draft not found" }, { status: 404 });
+    if (!current) {
+        log.warn({ quizId: id }, "Draft PATCH — no draft found");
+        return Response.json({ error: "Draft not found" }, { status: 404 });
+    }
 
-    const questions: z.infer<typeof questionSchema>[] =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (current.content as any).questions;
-
-    const op = parsed.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const questions: z.infer<typeof questionSchema>[] = (current.content as any).questions;
     let updatedQuestions = [...questions];
 
     switch (op.operation) {
@@ -179,7 +149,7 @@ export async function PATCH(
                 id: uuidv4(),
                 ...op.question,
                 options: op.question.options.map(o => {
-                    const { id, ...rest } = o;
+                    const { id: _id, ...rest } = o as z.infer<typeof optionSchema>;
                     return { id: uuidv4(), ...rest };
                 }),
             });
@@ -192,7 +162,7 @@ export async function PATCH(
         case "reorder_questions": {
             const map = new Map(updatedQuestions.map(q => [q.id, q]));
             updatedQuestions = op.questionIds
-                .map(id => map.get(id))
+                .map(qid => map.get(qid))
                 .filter(Boolean) as typeof updatedQuestions;
             break;
         }
@@ -231,6 +201,8 @@ export async function PATCH(
         .insert(draft)
         .values({ quizId: id, content: { questions: updatedQuestions } })
         .returning({ id: draft.id });
+
+    log.info({ quizId: id, operation: op.operation, newDraftId: inserted.id }, "Draft PATCH complete");
 
     return Response.json({ id: inserted.id });
 }

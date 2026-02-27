@@ -5,6 +5,7 @@ import { documents, documentChunks } from "@/db/schema";
 import { extractPdfText } from "@/lib/pdf";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { uploadLogger } from "@/lib/logger";
 
 export async function POST(req: Request) {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -13,36 +14,59 @@ export async function POST(req: Request) {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const log = uploadLogger(session.user.id);
+
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File | null;
         const rawText = formData.get("text") as string | null;
 
+        log.info({
+            hasFile: !!file,
+            fileName: file?.name,
+            fileType: file?.type,
+            fileSizeBytes: file?.size,
+            hasRawText: !!rawText,
+        }, "Upload started");
+
         let text: string = rawText || "";
 
         if (file) {
+            const extractStart = Date.now();
             const uint8 = new Uint8Array(await file.arrayBuffer());
             const { text: extracted } = await extractPdfText(uint8);
             text = extracted;
+            log.debug({
+                fileName: file.name,
+                extractedLength: text.length,
+                durationMs: Date.now() - extractStart,
+            }, "PDF text extracted");
         }
 
         if (!text || text.trim().length === 0) {
+            log.warn({ fileName: file?.name }, "No text extracted from upload");
             return Response.json({ error: "No text extracted" }, { status: 400 });
         }
 
-        // 1. insert parent document — scoped to the current user
+        // 1. Insert parent document
         const [document] = await db
             .insert(documents)
             .values({
                 userId: session.user.id,
                 fileName: file?.name ?? "manual-text",
                 fileType: file?.type ?? "text/plain",
-                content: text
+                content: text,
             })
             .returning({ id: documents.id });
 
-        // 2. embed and insert chunks linked to document
+        log.debug({ documentId: document.id }, "Document record created");
+
+        // 2. Chunk and embed
         const chunks = chunkText(text, 800);
+        log.info({ documentId: document.id, chunkCount: chunks.length }, "Chunking complete, starting embeddings");
+
+        const embedStart = Date.now();
+        let embeddedCount = 0;
 
         for (const chunk of chunks) {
             const { embedding } = await embed({
@@ -55,13 +79,23 @@ export async function POST(req: Request) {
                 content: chunk,
                 embedding,
             });
+
+            embeddedCount++;
         }
 
-        // 3. return the id
+        log.info({
+            documentId: document.id,
+            fileName: file?.name ?? "manual-text",
+            chunkCount: chunks.length,
+            embeddedCount,
+            durationMs: Date.now() - embedStart,
+        }, "Upload complete — all chunks embedded");
+
+        // 3. Return
         return Response.json({ id: document.id, chunksStored: chunks.length });
 
     } catch (err) {
-        console.error("UPLOAD CRASH:", err);
+        log.error({ err }, "Upload failed");
         return Response.json({ error: String(err) }, { status: 500 });
     }
 }
@@ -69,15 +103,12 @@ export async function POST(req: Request) {
 function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
     const chunks: string[] = [];
 
-    // normalize whitespace but preserve paragraph structure
     const normalized = text
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
         .replace(/\n{3,}/g, '\n\n');
 
-    // split on words, keeping paragraph breaks as tokens
     const words = normalized.split(/(\s+)/);
-
     let current = '';
 
     for (const word of words) {
@@ -87,8 +118,6 @@ function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
             if (current.trim()) {
                 chunks.push(current.trim());
             }
-
-            // carry over last `overlap` characters for context continuity
             current = current.slice(-overlap) + word;
         }
     }

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Redis from "ioredis";
 import type { InferSelectModel } from "drizzle-orm";
+import { apiLogger } from "@/lib/logger";
 
 type QuizStatus = InferSelectModel<typeof quiz>["status"];
 
@@ -21,9 +22,7 @@ const STATUS_TO_STEP: Record<QuizStatus, number> = {
     failed: -1,
 };
 
-// Max time to hold an SSE connection open.
-// Prevents leaked subscriber connections if the client disconnects uncleanly.
-const SSE_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes (job timeout is 10)
+const SSE_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
 
 export async function GET(
     req: NextRequest,
@@ -33,6 +32,7 @@ export async function GET(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const log = apiLogger("/api/quizzes/[id]/status GET", session.user.id);
     const encoder = new TextEncoder();
 
     const found = await db.query.quiz.findFirst({
@@ -40,7 +40,31 @@ export async function GET(
         columns: { status: true, errorMessage: true },
     });
 
-    if (!found) return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+    if (!found) {
+        log.warn({ quizId: id }, "Status SSE — quiz not found");
+        return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+    }
+
+    // Fast path — already terminal
+    if (TERMINAL_STATUSES.has(found.status)) {
+        log.debug({ quizId: id, status: found.status }, "Status SSE — already terminal, returning immediately");
+        const stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(encoder.encode(`: \n`));
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    status: found.status,
+                    step: STATUS_TO_STEP[found.status],
+                    errorMessage: found.errorMessage ?? null,
+                })}\n\n`));
+                controller.close();
+            },
+        });
+        return new Response(stream, {
+            headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+        });
+    }
+
+    log.debug({ quizId: id, currentStatus: found.status }, "Status SSE — subscribing for updates");
 
     const stream = new ReadableStream({
         async start(controller) {
@@ -50,7 +74,7 @@ export async function GET(
 
             const send = (status: QuizStatus, step: number, errorMessage?: string | null) => {
                 if (closed) return;
-                controller.enqueue(encoder.encode(`: \n`)); // forces Next.js to flush immediately
+                controller.enqueue(encoder.encode(`: \n`));
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                     status,
                     step,
@@ -68,48 +92,38 @@ export async function GET(
                 try { controller.close(); } catch { }
             };
 
-            // Fast path — already terminal before stream opens
-            if (TERMINAL_STATUSES.has(found.status)) {
-                send(found.status, STATUS_TO_STEP[found.status], found.errorMessage);
-                await close();
-                return;
-            }
-
             const subscriber = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
                 maxRetriesPerRequest: null,
                 enableReadyCheck: false,
             });
 
-            // Hard timeout — closes subscriber even if the client disconnected
-            // uncleanly and the abort signal never fired
             timeoutHandle = setTimeout(() => {
-                console.warn(`[status-sse] Timeout reached for quiz ${id}, closing subscriber`);
+                log.warn({ quizId: id, timeoutMs: SSE_TIMEOUT_MS }, "Status SSE timed out — closing subscriber");
                 close(subscriber);
             }, SSE_TIMEOUT_MS);
 
-            // ── Order matters ────────────────────────────────────────────────
-            // 1. Attach handler FIRST — no published message can be dropped
             subscriber.on("message", async (_channel, message) => {
                 const data = JSON.parse(message) as {
                     status: QuizStatus;
                     step: number;
                     errorMessage?: string;
                 };
+                log.debug({ quizId: id, status: data.status, step: data.step }, "Status SSE — received update");
                 send(data.status, data.step, data.errorMessage);
                 if (TERMINAL_STATUSES.has(data.status)) {
+                    log.info({ quizId: id, status: data.status }, "Status SSE — terminal status reached, closing");
                     await close(subscriber);
                 }
             });
 
             subscriber.on("error", async (err) => {
-                console.error("[status-sse] Redis subscriber error:", err);
+                log.error({ quizId: id, err }, "Status SSE — Redis subscriber error");
                 await close(subscriber);
             });
 
-            // 2. Subscribe
             await subscriber.subscribe(`quiz:${id}:status`);
 
-            // 3. Re-read DB — catches status that changed between initial read and subscribe
+            // Re-read DB — catches status that changed between initial read and subscribe
             const latest = await db.query.quiz.findFirst({
                 where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
                 columns: { status: true, errorMessage: true },
@@ -121,12 +135,15 @@ export async function GET(
             send(currentStatus, STATUS_TO_STEP[currentStatus], currentError);
 
             if (TERMINAL_STATUSES.has(currentStatus)) {
+                log.debug({ quizId: id, status: currentStatus }, "Status SSE — already terminal on recheck, closing");
                 await close(subscriber);
                 return;
             }
 
-            // Clean up on client disconnect
-            req.signal.addEventListener("abort", () => close(subscriber));
+            req.signal.addEventListener("abort", () => {
+                log.debug({ quizId: id }, "Status SSE — client disconnected");
+                close(subscriber);
+            });
         },
     });
 

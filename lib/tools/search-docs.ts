@@ -4,6 +4,9 @@ import { embed } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { sql } from 'drizzle-orm';
 import { db } from '@/db';
+import logger from '@/lib/logger';
+
+const toolLog = logger.child({ component: "tool", tool: "searchDocs" });
 
 export const searchDocs = tool({
     description:
@@ -13,10 +16,12 @@ export const searchDocs = tool({
         documentIds: z.array(z.string().uuid()),
     }),
     execute: async ({ query, documentIds }) => {
-
         if (!documentIds.length) {
+            toolLog.warn({ query }, "searchDocs called with no documentIds");
             return 'RETRIEVAL_FAILED: No document IDs provided.';
         }
+
+        const start = Date.now();
 
         const { embedding } = await embed({
             model: openai.embedding('text-embedding-3-small'),
@@ -33,8 +38,16 @@ export const searchDocs = tool({
         `);
 
         if (!result.rows.length) {
+            toolLog.warn({ query, documentIds, durationMs: Date.now() - start }, "searchDocs returned no results");
             return `RETRIEVAL_FAILED: No relevant content found for query: "${query}"`;
         }
+
+        toolLog.debug({
+            query,
+            documentCount: documentIds.length,
+            resultCount: result.rows.length,
+            durationMs: Date.now() - start,
+        }, "searchDocs completed");
 
         return result.rows
             .map(r => `[${r.file_name}]\n${r.content}`)

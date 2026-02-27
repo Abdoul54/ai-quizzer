@@ -5,6 +5,7 @@ import type { MinionJobData } from "@/lib/queue";
 import { db } from "@/db";
 import { quiz } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import logger, { minionLogger } from "@/lib/logger";
 
 const CONCURRENCY = Number(process.env.MINION_CONCURRENCY ?? 5);
 const JOB_TIMEOUT_MS = 60_000;
@@ -77,36 +78,48 @@ function enforceStructure(q: Question, newType: QuestionType): Question {
 async function runMinion(job: Job<MinionJobData>) {
     const data = job.data;
     const channel = minionResultChannel(job.id!);
+    const log = minionLogger(job.id!, data.quizId, data.scope);
 
-    // Fetch architecture from DB — gives minions full context on topic, difficulty, language
+    log.info("Minion job started");
+
     const quizRecord = await db.query.quiz.findFirst({
         where: eq(quiz.id, data.quizId),
         columns: { architecture: true },
     });
     const architecture = quizRecord?.architecture ?? undefined;
 
+    if (!architecture) {
+        log.warn("No architecture found for quiz — proceeding without context");
+    }
+
     try {
         let result: unknown;
+        const start = Date.now();
 
         if (data.scope === "question_text") {
-            const output = await questionMinion({ ...data, architecture });
-            result = output;
+            log.debug("Running question_text minion");
+            result = await questionMinion({ ...data, architecture });
         }
 
         if (data.scope === "single_option") {
+            log.debug("Running single_option minion");
             const output = await singleOptionMinion({ ...data, architecture });
             result = { optionText: output.optionText, isCorrect: data.option.isCorrect };
         }
 
         if (data.scope === "change_type") {
+            log.debug({ newType: data.newType }, "Running change_type minion");
             const output = await typeMinion({ ...data, architecture });
             result = enforceStructure(output, data.newType);
         }
 
         if (data.scope === "add_distractor") {
+            log.debug("Running add_distractor minion");
             const output = await distractionMinion({ ...data, architecture });
             result = { optionText: output.optionText, isCorrect: false };
         }
+
+        log.info({ durationMs: Date.now() - start }, "Minion completed successfully");
 
         const resultPayload = JSON.stringify({ ok: true, data: result });
         await Promise.all([
@@ -114,8 +127,12 @@ async function runMinion(job: Job<MinionJobData>) {
             redis.publish(channel, resultPayload),
         ]);
     } catch (err) {
-        const message =
-            err instanceof Error ? err.message : "Improvement failed. Please try again.";
+        const message = err instanceof Error ? err.message : "Improvement failed. Please try again.";
+        const unrecoverable = ["invalid_api_key", "insufficient_quota", "content_policy"].some(
+            (p) => message.toLowerCase().includes(p)
+        );
+
+        log.error({ err, unrecoverable }, "Minion job failed");
 
         const errorPayload = JSON.stringify({ ok: false, error: message });
         await Promise.all([
@@ -123,11 +140,7 @@ async function runMinion(job: Job<MinionJobData>) {
             redis.publish(channel, errorPayload),
         ]);
 
-        const unrecoverable = ["invalid_api_key", "insufficient_quota", "content_policy"].some(
-            (p) => message.toLowerCase().includes(p)
-        );
         if (unrecoverable) throw new UnrecoverableError(message);
-
         throw err;
     }
 }
@@ -135,6 +148,8 @@ async function runMinion(job: Job<MinionJobData>) {
 // ─── Worker factory ───────────────────────────────────────────────────────────
 
 export function startMinionWorker() {
+    const workerLog = logger.child({ component: "minion" });
+
     const worker = new Worker<MinionJobData>(
         "minion-improvement",
         (job) =>
@@ -151,25 +166,26 @@ export function startMinionWorker() {
     );
 
     worker.on("active", (job) => {
-        console.log(`[minion] Job ${job.id} active — scope: ${job.data.scope}`);
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId, scope: job.data.scope }, "Job active");
     });
 
     worker.on("completed", (job) => {
-        console.log(`[minion] Job ${job.id} completed — scope: ${job.data.scope}`);
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId, scope: job.data.scope }, "Job completed");
     });
 
     worker.on("failed", (job, err) => {
         const attemptsLeft = job ? (job.opts.attempts ?? 1) - job.attemptsMade : 0;
-        console.error(
-            `[minion] Job ${job?.id} failed (${attemptsLeft} retries left): ${err.message}`
+        workerLog.error(
+            { jobId: job?.id, quizId: job?.data.quizId, scope: job?.data.scope, attemptsLeft, err },
+            "Job failed"
         );
     });
 
     worker.on("error", (err) => {
-        console.error("[minion] Worker error:", err);
+        workerLog.error({ err }, "Worker error");
     });
 
-    console.log(`[minion] Started (concurrency: ${CONCURRENCY})`);
+    workerLog.info({ concurrency: CONCURRENCY }, "Minion worker started");
 
     return worker;
 }

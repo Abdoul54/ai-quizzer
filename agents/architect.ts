@@ -2,6 +2,7 @@ import { generateText, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { searchDocs } from '@/lib/tools/search-docs';
 import { getDocumentOverview } from '@/lib/tools/get-document-overview';
+import { agentLogger } from '@/lib/logger';
 
 interface QuizUserInput {
     documents: string[];
@@ -11,10 +12,22 @@ interface QuizUserInput {
     questionTypes?: ('true_false' | 'single_choice' | 'multiple_choice')[];
     language?: string;
     additionalPrompt?: string;
+    quizId?: string; // optional — passed through from worker for log correlation
 }
 
 export const architect = async (input: QuizUserInput): Promise<string> => {
     const hasDocuments = input.documents.length > 0;
+    const log = agentLogger('architect', input.quizId);
+
+    log.info({
+        documentCount: input.documents.length,
+        questionCount: input.questionCount ?? 10,
+        difficulty: input.difficulty ?? 'medium',
+        language: input.language ?? 'auto',
+        hasDocuments,
+    }, 'Architect started');
+
+    const start = Date.now();
 
     const result = await generateText({
         model: openai(process.env.ARCHITECT || 'gpt-4o-mini'),
@@ -77,18 +90,42 @@ Start by calling getDocumentOverview with:
 - Additional instructions: ${input.additionalPrompt ?? 'none'}`,
     });
 
+    // Log tool usage summary
+    const toolCalls = result.steps.flatMap(s => s.toolCalls ?? []);
+    const toolResults = result.steps.flatMap(s => s.toolResults ?? []);
+    const retrievalFailed = toolResults.some(
+        r => typeof r.output === 'string' && r.output.startsWith('RETRIEVAL_FAILED')
+    );
+
+    log.debug({
+        steps: result.steps.length,
+        toolCallCount: toolCalls.length,
+        toolsUsed: [...new Set(toolCalls.map(t => t.toolName))],
+        retrievalFailed,
+        outputTokens: result.usage?.outputTokens,
+        inputTokens: result.usage?.inputTokens,
+    }, 'Architect LLM call complete');
+
+    if (retrievalFailed) {
+        log.warn({ toolResults: toolResults.map(r => r.output) }, 'One or more retrieval calls failed');
+    }
+
     const architecture =
         result.text ||
         result.steps.findLast((s) => s.text.length > 0)?.text ||
         '';
 
     if (!architecture) {
+        log.error('Architect produced no output');
         throw new Error('Architect failed to generate architecture.');
     }
 
     if (hasDocuments && architecture.startsWith('RETRIEVAL_FAILED')) {
+        log.error({ architecture }, 'Architect returned RETRIEVAL_FAILED');
         throw new Error('Architect failed to retrieve document content. Ensure documents are uploaded and embeddings are generated.');
     }
+
+    log.info({ durationMs: Date.now() - start, architectureLength: architecture.length }, 'Architect completed');
 
     return architecture;
 };
