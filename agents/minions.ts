@@ -29,12 +29,20 @@ const addDistractorSchema = Output.object({
     })
 })
 
+// ─── Architecture context helper ──────────────────────────────────────────────
+
+function architectureContext(architecture?: string): string {
+    if (!architecture) return "";
+    return `\n\nQUIZ ARCHITECTURE (use this to stay consistent with the quiz's topic, difficulty, language, and learning objectives):\n${architecture}`;
+}
+
+// ─── Minions ──────────────────────────────────────────────────────────────────
 
 export const questionMinion = async (data: any) => {
     const { output } = await generateText({
-        model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
+        model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: questionTextSchema,
-        system: `You are a quiz question editor. Rewrite the question text to be clearer and more precise. Do not change the intent or difficulty.`,
+        system: `You are a quiz question editor. Rewrite the question text to be clearer and more precise. Do not change the intent or difficulty.${architectureContext(data.architecture)}`,
         prompt: `Improve this question text:\n\n"${data.question.questionText}"\n\nContext — type: ${data.question.questionType}, options: ${data.question.options.map((o: any) => o.optionText).join(", ")}`,
     });
 
@@ -44,9 +52,9 @@ export const questionMinion = async (data: any) => {
 
 export const singleOptionMinion = async (data: any) => {
     const { output } = await generateText({
-        model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
+        model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: singleOptionSchema,
-        system: `You are a quiz question editor. Improve this answer option to be clearer and more plausible. Do not change its meaning.`,
+        system: `You are a quiz question editor. Improve this answer option to be clearer and more plausible. Do not change its meaning.${architectureContext(data.architecture)}`,
         prompt: `Question: "${data.option.isCorrect
             ? "Improve this correct answer to be clear and precise."
             : "Improve this distractor to be plausible but clearly wrong."
@@ -58,10 +66,10 @@ export const singleOptionMinion = async (data: any) => {
 
 export const typeMinion = async (data: any) => {
     const { output } = await generateText({
-        model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
+        model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: changeTypeSchema,
         system: `
-You are an expert quiz editor that converts questions between types with strict structural rules.
+You are an expert quiz editor that converts questions between types with strict structural rules.${architectureContext(data.architecture)}
 
 TYPE CONVERSION RULES:
 
@@ -77,20 +85,18 @@ IF new type = single_choice:
 IF new type = multiple_choice:
 - Create 3–5 options total, at least TWO correct.
 - Rewrite question to indicate multiple answers (e.g. "Which of the following...").`,
-        prompt: `Convert this question from ${data.question.questionType} to ${data.newType}:\n\n${JSON.stringify(data.question, null, 2)}`,
+        prompt: `Convert this question to "${data.newType}":\n\nQuestion: "${data.question.questionText}"\nCurrent type: ${data.question.questionType}\nOptions: ${JSON.stringify(data.question.options)}`,
     });
 
     return output
 }
 
 export const distractionMinion = async (data: any) => {
-    const existingOptions = data.question.options.map((o: any) => o.optionText);
-
     const { output } = await generateText({
-        model: openai(process.env.QUIZ_EDITOR || "gpt-4o-mini"),
+        model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: addDistractorSchema,
-        system: `You are a quiz question editor. Generate a single new plausible but incorrect answer option (distractor) for the given question. It must be clearly wrong but not obviously so. Do not duplicate any existing options.`,
-        prompt: `Question: "${data.question.questionText}"\n\nExisting options:\n${existingOptions.map((o: any) => `- ${o}`).join("\n")}\n\nGenerate one new distractor.`,
+        system: `You are a quiz question editor. Generate a plausible but clearly incorrect distractor option for the given question. It must fit naturally among the existing options without being obviously wrong.${architectureContext(data.architecture)}`,
+        prompt: `Question: "${data.question.questionText}"\nExisting options: ${data.question.options.map((o: any) => o.optionText).join(", ")}\n\nGenerate one new distractor.`,
     });
 
     return output

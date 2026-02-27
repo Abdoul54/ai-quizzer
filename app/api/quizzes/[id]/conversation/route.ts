@@ -77,7 +77,7 @@ export async function GET(
 
     const conversation = await db.query.conversations.findFirst({
         where: eq(conversations.quizId, id),
-        with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] }, quiz: { columns: { title: true } } },
+        with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] }, quiz: { columns: { title: true, defaultLanguage: true } } },
     });
 
     return Response.json(conversation ?? null);

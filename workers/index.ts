@@ -1,8 +1,10 @@
 import "dotenv/config";
 import { createServer } from "http";
 import { startWorker } from "./quiz-generation.worker";
+import { startMinionWorker } from "./minion.worker";
 
 const worker = startWorker();
+const minionWorker = startMinionWorker();
 
 // ── Health check server ───────────────────────────────────────────────────────
 // Docker uses this to determine if the worker is alive.
@@ -27,12 +29,11 @@ healthServer.listen(HEALTH_PORT, () => {
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
 async function shutdown(signal: string) {
     console.log(`[worker] Received ${signal}, shutting down gracefully...`);
-    healthy = false; // stop accepting health checks immediately
+    healthy = false;
 
-    // Give Docker a moment to stop routing traffic before we close
     await new Promise((r) => setTimeout(r, 2_000));
 
-    await worker.close();
+    await Promise.all([worker.close(), minionWorker.close()]);
     healthServer.close();
 
     console.log("[worker] Shutdown complete.");

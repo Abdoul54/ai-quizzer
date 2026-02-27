@@ -20,6 +20,7 @@ import { EditableQuestion } from "./editable-question";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Direction } from "@/lib/languages";
 
 interface Question {
     id: string;
@@ -83,7 +84,7 @@ const SortableQuestionRow = ({
     );
 };
 
-const EditablePreview = ({ id }: { id: string }) => {
+const EditablePreview = ({ id, dir }: { id: string; dir?: Direction }) => {
     const { data, isLoading, error } = useLatestDraft(id);
     const { reorderQuestions, deleteQuestion, updateQuestion, updateOption, replaceOptions, addOption } =
         useDraftMutations(id);
@@ -140,6 +141,7 @@ const EditablePreview = ({ id }: { id: string }) => {
                     <EditableQuestion
                         key={selectedQuestion.id}
                         quizId={id}
+                        dir={dir}
                         question={selectedQuestion}
                         index={questions.findIndex(q => q.id === selectedQuestion.id)}
                         onUpdateQuestion={(questionId, fields) =>

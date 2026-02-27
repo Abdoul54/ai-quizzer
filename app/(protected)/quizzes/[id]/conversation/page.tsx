@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useApproveQuiz } from "@/hooks/api/use-approve-quiz"
 import { useQuizConversation } from "@/hooks/api/use-quiz"
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs"
+import { getDirection, LanguageCode } from "@/lib/languages"
 import { CheckCheck } from "lucide-react"
 import { useParams } from "next/navigation"
 
@@ -15,6 +16,9 @@ const Page = () => {
     const { id } = useParams()
 
     const { data } = useQuizConversation(String(id))
+
+    console.log(data);
+
     const approveQuiz = useApproveQuiz(String(id));
 
 
@@ -47,7 +51,7 @@ const Page = () => {
                     </CardContent>
                 </Card>
                 <Card className="flex-1 col-span-3 bg-transparent p-2">
-                    <EditablePreview id={String(id)} />
+                    <EditablePreview id={String(id)} dir={getDirection(data?.quiz?.defaultLanguage as LanguageCode || "en")} />
                 </Card>
             </div>
         </div>

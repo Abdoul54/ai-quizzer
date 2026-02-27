@@ -145,7 +145,7 @@ export const quiz = pgTable("quiz", {
     difficulty: quizDifficultyEnum("difficulty"),
     status: quizStatusEnum("status").default("draft").notNull(),
     questionTypes: questionTypeEnum("question_types").array().default([]),
-    defautltLanguage: languageEnum("default_language").default("en"),
+    defaultLanguage: languageEnum("default_language").default("en"),
     languages: defaultLanguageEnum('languages').array(),
     additionalPrompt: text("additional_prompt"),
     architecture: text("architecture"),

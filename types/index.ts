@@ -79,6 +79,7 @@ export type ConversationWithMessages = {
     quiz: {
         id: string;
         title: string;
+        defaultLanguage: string;
     };
     messages: Message[];
 };

@@ -15,35 +15,86 @@ interface Question {
     options: Option[];
 }
 
-const postImprove = async (quizId: string, body: object) => {
+// ─── Return types per scope ───────────────────────────────────────────────────
+
+interface ImprovedQuestionText {
+    questionText: string;
+}
+
+interface ImprovedOption {
+    optionText: string;
+    isCorrect: boolean;
+}
+
+interface ChangedTypeResult {
+    questionText: string;
+    questionType: QuestionType;
+    options: { optionText: string; isCorrect: boolean }[];
+}
+
+interface AddedDistractor {
+    optionText: string;
+    isCorrect: false;
+}
+
+// ─── Core async helper ────────────────────────────────────────────────────────
+
+async function enqueueAndAwait<T>(quizId: string, body: object): Promise<T> {
     const res = await fetch(`/api/quizzes/${quizId}/draft/improve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
     });
+
     if (!res.ok) throw new Error(await res.text());
-    return res.json();
-};
+
+    const { jobId } = (await res.json()) as { jobId: string };
+
+    return new Promise<T>((resolve, reject) => {
+        const es = new EventSource(`/api/quizzes/${quizId}/draft/improve/${jobId}`);
+
+        es.onmessage = (event) => {
+            es.close();
+            try {
+                const payload = JSON.parse(event.data) as { ok: boolean; data?: T; error?: string };
+                if (payload.ok) {
+                    resolve(payload.data as T);
+                } else {
+                    reject(new Error(payload.error ?? "Improvement failed. Please try again."));
+                }
+            } catch {
+                reject(new Error("Unexpected response from server."));
+            }
+        };
+
+        es.onerror = () => {
+            es.close();
+            reject(new Error("Lost connection. Please try again."));
+        };
+    });
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useImproveQuestion = (quizId: string) => {
     const improveQuestionText = useMutation({
         mutationFn: (question: Question) =>
-            postImprove(quizId, { scope: "question_text", question }),
+            enqueueAndAwait<ImprovedQuestionText>(quizId, { scope: "question_text", question }),
     });
 
     const improveOption = useMutation({
         mutationFn: ({ questionText, option }: { questionText: string; option: Omit<Option, "id"> }) =>
-            postImprove(quizId, { scope: "single_option", questionText, option }),
+            enqueueAndAwait<ImprovedOption>(quizId, { scope: "single_option", questionText, option }),
     });
 
     const changeType = useMutation({
         mutationFn: ({ question, newType }: { question: Question; newType: QuestionType }) =>
-            postImprove(quizId, { scope: "change_type", question, newType }),
+            enqueueAndAwait<ChangedTypeResult>(quizId, { scope: "change_type", question, newType }),
     });
 
     const addDistractor = useMutation({
         mutationFn: (question: Question) =>
-            postImprove(quizId, { scope: "add_distractor", question }),
+            enqueueAndAwait<AddedDistractor>(quizId, { scope: "add_distractor", question }),
     });
 
     return { improveQuestionText, improveOption, changeType, addDistractor };

@@ -13,6 +13,7 @@ import { Trash2, Sparkles, Plus, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useImproveQuestion } from "@/hooks/api/use-improve-question";
 import { GradientIcon } from "./gradient-icon";
+import { Direction } from "@/lib/languages";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
@@ -31,6 +32,7 @@ interface Question {
 
 interface Props {
     quizId: string;
+    dir?: Direction;
     question: Question;
     index: number;
 
@@ -60,6 +62,7 @@ interface Props {
 
 export const EditableQuestion = ({
     quizId,
+    dir,
     question,
     index,
     onUpdateQuestion,
@@ -134,6 +137,7 @@ export const EditableQuestion = ({
                 "w-full transition-opacity",
                 // isLocked && "opacity-60 pointer-events-none"
             )}
+            dir={dir}
         >
             <CardHeader className="flex items-center justify-between">
                 <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
