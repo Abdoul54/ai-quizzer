@@ -42,7 +42,7 @@ export async function GET(
     if (!found) return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     if (found.status !== "published") return NextResponse.json({ error: "Quiz not available" }, { status: 403 });
 
-    const defaultLanguage = found.defautltLanguage ?? "en";
+    const defaultLanguage = found.defaultLanguage ?? "en";
     const availableLanguages: string[] = found.languages ?? [defaultLanguage];
 
     const requestedLang = req.nextUrl.searchParams.get("lang");

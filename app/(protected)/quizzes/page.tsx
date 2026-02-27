@@ -1,7 +1,6 @@
 'use client'
 
 import NewQuizDialog from "@/components/dialogs/new-quiz-dialog"
-// import NewQuizDialog from "@/components/dialogs/new-quiz-dialog"
 import { useQuizzes } from "@/hooks/api/use-quiz"
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs"
 import ErrorQuizzes from "@/views/quizzes/error-quizzes"
@@ -12,7 +11,7 @@ import NoQuizzes from "@/views/quizzes/no-quizzes"
 const Page = () => {
     useSetBreadcrumbs([
         { label: "Home", href: "/" },
-        { label: "Quizzes" }, // no href = renders as BreadcrumbPage
+        { label: "Quizzes" },
     ]);
 
     const { data, isLoading, error } = useQuizzes()

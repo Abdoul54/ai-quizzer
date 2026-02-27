@@ -121,6 +121,8 @@ services:
       NODE_ENV: production
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       WORKER_HEALTH_PORT: 3001
+    ports:
+      - "3001:3001"          # ← add this
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001 || exit 1"]
       interval: 30s

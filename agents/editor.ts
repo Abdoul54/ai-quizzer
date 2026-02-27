@@ -10,9 +10,10 @@ interface EditorInput {
     documentIds?: string[];
     architecture?: string;
     messages?: UIMessage[];
+    onSave?: (text: string) => Promise<void>; // <-- add this
 }
 
-export const editor = async ({ quizId, documentIds = [], architecture, messages }: EditorInput) => {
+export const editor = async ({ quizId, documentIds = [], architecture, messages, onSave }: EditorInput) => {
     const log = agentLogger('editor', quizId);
     const modelMessages = await convertToModelMessages(messages ?? []);
     const hasDocuments = documentIds.length > 0;
@@ -33,7 +34,14 @@ export const editor = async ({ quizId, documentIds = [], architecture, messages 
         onError: ({ error }) => {
             log.error({ quizId, err: error }, 'Editor stream error');
         },
-        onFinish: ({ usage, steps }) => {
+        onFinish: async ({ text, usage, steps }) => {
+            // Save the response here, inside the stream's lifecycle
+            if (text && onSave) {
+                await onSave(text).catch((err) =>
+                    log.error({ quizId, err }, 'Failed to save assistant response')
+                );
+            }
+
             const toolCalls = steps.flatMap(s => s.toolCalls ?? []);
             log.info({
                 quizId,

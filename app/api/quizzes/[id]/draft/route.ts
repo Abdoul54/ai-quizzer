@@ -2,11 +2,12 @@ import { db } from "@/db";
 import { quiz, draft } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { and, desc, eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { apiLogger } from "@/lib/logger";
+import { uuidParamSchema } from "@/lib/validators";
 
 const optionSchema = z.object({
     id: z.string(),
@@ -64,6 +65,8 @@ const patchSchema = z.discriminatedUnion("operation", [
         }),
     }),
 ]);
+
+type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(
     req: Request,
@@ -205,4 +208,47 @@ export async function PATCH(
     log.info({ quizId: id, operation: op.operation, newDraftId: inserted.id }, "Draft PATCH complete");
 
     return Response.json({ id: inserted.id });
+}
+
+export async function GET(_req: NextRequest, { params }: Params) {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const log = apiLogger("/api/quizzes/[id]/draft GET", session.user.id);
+
+    try {
+        const parsedParams = uuidParamSchema.safeParse(await params);
+        if (!parsedParams.success) {
+            log.warn({ errors: parsedParams.error.flatten() }, "Draft GET — invalid quiz ID");
+            return NextResponse.json({ error: "Invalid quiz ID" }, { status: 400 });
+        }
+
+        const { id } = parsedParams.data;
+
+        const quizExists = await db.query.quiz.findFirst({
+            where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
+            columns: { id: true },
+        });
+
+        if (!quizExists) {
+            log.warn({ quizId: id }, "Draft GET — quiz not found");
+            return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+        }
+
+        const latestDraft = await db.query.draft.findFirst({
+            where: eq(draft.quizId, id),
+            orderBy: [desc(draft.createdAt)],
+        });
+
+        if (!latestDraft) {
+            log.warn({ quizId: id }, "Draft GET — no draft found");
+            return NextResponse.json({ error: "No draft found" }, { status: 404 });
+        }
+
+        log.info({ quizId: id, draftId: latestDraft.id }, "Draft GET complete");
+        return NextResponse.json(latestDraft);
+    } catch (err) {
+        log.error({ err }, "Draft GET — unexpected error");
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
 }

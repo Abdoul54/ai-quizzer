@@ -66,6 +66,14 @@ export async function POST(
         documentIds: quizExists.documentIds ?? [],
         architecture: quizExists.architecture ?? undefined,
         messages,
+        onSave: async (text) => {
+            await db.insert(message).values({
+                conversationId: conversation!.id,
+                role: "assistant",
+                content: [{ type: "text", text }],
+            });
+            log.debug({ quizId: id, conversationId: conversation!.id }, "Assistant response saved");
+        },
     });
 
     const result = stream.toUIMessageStreamResponse();
