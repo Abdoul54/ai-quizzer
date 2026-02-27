@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation"
 
 export function Nav({
     nav,
+    groupLabel = "Platform",
 }: {
     nav: {
         title: string
@@ -22,12 +23,13 @@ export function Nav({
         icon?: LucideIcon
         isActive?: boolean
     }[]
+    groupLabel?: string
 }) {
     const router = useRouter()
 
     return (
         <SidebarGroup>
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+            <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>
             <SidebarMenu>
                 {nav.map((item, idx) => (
                     <SidebarMenuItem key={idx}>

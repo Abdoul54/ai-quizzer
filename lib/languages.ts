@@ -1,7 +1,7 @@
 export type Direction = "ltr" | "rtl";
 
 export const languages: {
-    code: string;
+    code: LanguageCode;
     direction: Direction;
     labels: {
         ar: string
