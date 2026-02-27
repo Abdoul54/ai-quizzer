@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { documentChunks, documents } from '@/db/schema';
 
@@ -12,8 +12,6 @@ export const getDocumentOverview = tool({
         chunksPerDocument: z.number().default(15),
     }),
     execute: async ({ documentIds, chunksPerDocument }) => {
-        console.log('TOOL getDocumentOverview CALLED with:', documentIds, 'chunksPerDocument:', chunksPerDocument);
-
         if (!documentIds.length) {
             return 'RETRIEVAL_FAILED: No document IDs provided.';
         }

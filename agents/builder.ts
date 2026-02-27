@@ -33,7 +33,6 @@ export const builder = async ({ quizId, architecture, documentIds }: BuilderInpu
     const hasDocuments = documentIds.length > 0;
 
 
-    console.log("Building the quiz...")
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
             const { output } = await generateText({

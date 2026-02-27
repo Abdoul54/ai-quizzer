@@ -43,7 +43,6 @@ export async function POST(req: Request) {
 
         // 2. embed and insert chunks linked to document
         const chunks = chunkText(text, 800);
-        console.log(`Document chunked into ${chunks.length} chunks (text length: ${text.length})`);
 
         for (const chunk of chunks) {
             const { embedding } = await embed({

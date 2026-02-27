@@ -18,7 +18,7 @@ export async function POST(
 
     const quizExists = await db.query.quiz.findFirst({
         where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
-        columns: { id: true },
+        columns: { id: true, documentIds: true, architecture: true },
     });
 
     if (!quizExists) return Response.json({ error: "Quiz not found" }, { status: 404 });
@@ -47,7 +47,12 @@ export async function POST(
         });
     }
 
-    const stream = await editor({ quizId: id, messages });
+    const stream = await editor({
+        quizId: id,
+        documentIds: quizExists.documentIds ?? [],
+        architecture: quizExists.architecture ?? undefined,
+        messages,
+    });
 
     // save assistant response after streaming completes
     const result = stream.toUIMessageStreamResponse();

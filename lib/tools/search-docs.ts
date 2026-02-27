@@ -13,7 +13,6 @@ export const searchDocs = tool({
         documentIds: z.array(z.string().uuid()),
     }),
     execute: async ({ query, documentIds }) => {
-        console.log('TOOL searchDocs CALLED with:', query, documentIds);
 
         if (!documentIds.length) {
             return 'RETRIEVAL_FAILED: No document IDs provided.';

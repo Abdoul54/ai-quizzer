@@ -7,12 +7,14 @@ import { searchDocs } from '@/lib/tools/search-docs';
 interface EditorInput {
     quizId: string;
     documentIds?: string[];
+    architecture?: string;
     messages?: UIMessage[];
 }
 
-export const editor = async ({ quizId, documentIds = [], messages }: EditorInput) => {
+export const editor = async ({ quizId, documentIds = [], architecture, messages }: EditorInput) => {
     const modelMessages = await convertToModelMessages(messages ?? []);
     const hasDocuments = documentIds.length > 0;
+    const hasArchitecture = !!architecture;
 
     return streamText({
         model: openai(process.env.QUIZ_EDITOR || 'gpt-4o-mini'),
@@ -39,7 +41,8 @@ RULES:
 - For single_choice: 3–5 options, exactly one correct.
 - For multiple_choice: 3–5 options, 2 or more correct.
 - If the request is ambiguous, ask for clarification before calling updateDraft.
-- If getDraft returns DRAFT_NOT_FOUND, tell the user the draft doesn't exist yet.`,
+- If getDraft returns DRAFT_NOT_FOUND, tell the user the draft doesn't exist yet.
+${hasArchitecture ? '- Stay consistent with the quiz architecture below. Respect its topic distribution, difficulty level, language, and learning objectives when editing or adding questions.' : ''}`,
         messages: [
             {
                 role: 'system',
@@ -48,7 +51,10 @@ RULES:
                     hasDocuments
                         ? `The documentIds to use when calling searchDocs are: [${documentIds.map(id => `"${id}"`).join(', ')}]`
                         : 'No source documents are linked to this quiz. Do not call searchDocs.',
-                ].join('\n'),
+                    hasArchitecture
+                        ? `\nQUIZ ARCHITECTURE (the original instructional design — use this as your reference when editing or adding questions):\n${architecture}`
+                        : '',
+                ].filter(Boolean).join('\n'),
             },
             ...modelMessages,
         ],

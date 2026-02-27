@@ -41,7 +41,7 @@ export function User() {
     const { isMobile } = useSidebar()
     const router = useRouter()
 
-    const { data, isPending, ...rest } = useSession()
+    const { data, isPending } = useSession()
 
     const [loading, setLoading] = useState(false);
 
@@ -59,10 +59,6 @@ export function User() {
             router.push("/login");
         }
     }
-
-    console.log({ data, rest });
-
-
 
     return (
         <SidebarMenu>

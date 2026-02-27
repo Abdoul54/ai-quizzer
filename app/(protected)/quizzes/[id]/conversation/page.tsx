@@ -16,9 +16,6 @@ const Page = () => {
     const { id } = useParams()
 
     const { data } = useQuizConversation(String(id))
-
-    console.log(data);
-
     const approveQuiz = useApproveQuiz(String(id));
 
 
