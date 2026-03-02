@@ -2,16 +2,19 @@
 import { Check, LucideIcon } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { cn } from "@/lib/utils";
+import { useUILanguage } from "@/providers/ui-language-provider";
 
 export default function StepProgress({ steps, currentStep = 2 }: {
     steps: {
-        preloadTitle?: string;
-        loadTitle?: string;
-        postLoadTitle?: string;
+        preloadTitle: "step.0.pre" | "step.1.pre" | "step.2.pre";
+        loadTitle: "step.0.loading" | "step.1.loading" | "step.2.loading";
+        postLoadTitle: "step.0.done" | "step.1.done" | "step.2.done";
         Icon: LucideIcon
     }[];
     currentStep?: number;
 }) {
+    const { t } = useUILanguage()
+
     const stepsWithSeparators = steps.reduce((acc, step, idx) => {
         acc.push(step);
         if (idx < steps.length - 1) {
@@ -70,7 +73,7 @@ export default function StepProgress({ steps, currentStep = 2 }: {
                                             !isActive && !isCompleted && "text-muted-foreground/60"
                                         )}
                                     >
-                                        {label}
+                                        {t(label)}
                                     </span>
                                 </div>
                             </div>

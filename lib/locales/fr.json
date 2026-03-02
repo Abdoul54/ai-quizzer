@@ -1,0 +1,121 @@
+{
+  "app.name": "AI Quizzer",
+
+  "nav.platform": "Plateforme",
+  "nav.quizzes": "Quiz",
+
+  "user.account": "Compte",
+  "user.profile": "Profil",
+  "user.settings": "Paramètres",
+  "user.signOut": "Se déconnecter",
+
+  "profile.title": "Profil",
+  "profile.subtitle": "Gérez les paramètres de votre compte",
+  "profile.personalInfo": "Informations personnelles",
+  "profile.personalInfoDesc": "Mettez à jour votre nom et votre langue préférée.",
+  "profile.name": "Nom",
+  "profile.email": "E-mail",
+  "profile.emailNote": "L'e-mail ne peut pas être modifié ici.",
+  "profile.language": "Langue",
+  "profile.saveChanges": "Enregistrer",
+  "profile.password": "Mot de passe",
+  "profile.passwordDesc": "Choisissez un mot de passe fort. Les autres sessions seront déconnectées.",
+  "profile.currentPassword": "Mot de passe actuel",
+  "profile.newPassword": "Nouveau mot de passe",
+  "profile.updatePassword": "Mettre à jour le mot de passe",
+
+  "quizzes.title": "Quiz",
+  "quizzes.new": "Nouveau quiz",
+  "quizzes.empty": "Aucun quiz pour l'instant",
+  "quizzes.emptyHint": "Créez votre premier quiz pour commencer.",
+
+  "quiz.passQuiz": "Passer le quiz",
+  "quiz.edit": "Modifier",
+  "quiz.difficulty": "Difficulté",
+  "quiz.questionCount": "Questions",
+  "quiz.questionTypes": "Types de questions",
+  "quiz.languages": "Langues",
+  "quiz.additionalPrompt": "Instructions supplémentaires",
+  "quiz.status": "Statut",
+  "quiz.topic": "Sujet",
+
+  "newQuiz.dialogTitle": "Créer un nouveau quiz",
+  "newQuiz.quizTitle": "Titre du quiz",
+  "newQuiz.topic": "Sujet (optionnel)",
+  "newQuiz.questionCount": "Nombre de questions",
+  "newQuiz.difficulty": "Difficulté",
+  "newQuiz.questionTypes": "Types de questions",
+  "newQuiz.languages": "Langues",
+  "newQuiz.additionalPrompt": "Instructions supplémentaires",
+  "newQuiz.uploading": "Téléchargement...",
+  "newQuiz.create": "Créer le quiz",
+  "newQuiz.cancel": "Annuler",
+
+  "step.0.pre": "Analyser les détails",
+  "step.0.loading": "Enregistrement...",
+  "step.0.done": "Détails enregistrés",
+  "step.1.pre": "Concevoir la structure",
+  "step.1.loading": "Conception en cours...",
+  "step.1.done": "Structure conçue",
+  "step.2.pre": "Générer des questions",
+  "step.2.loading": "Génération en cours...",
+  "step.2.done": "Questions générées",
+
+  "take.selectLanguage": "Choisissez votre langue",
+  "take.start": "Commencer le quiz",
+  "take.next": "Suivant",
+  "take.submit": "Soumettre",
+  "take.results": "Résultats",
+  "take.score": "{score} sur {total} correct",
+  "take.perfectScore": "Score parfait !",
+  "take.wellDone": "Bien joué !",
+  "take.keepPracticing": "Continuez à pratiquer.",
+  "take.loadFailed": "Échec du chargement.",
+  "take.question": "Question",
+
+  "common.loading": "Chargement...",
+  "common.error": "Une erreur est survenue.",
+
+  "difficulty.easy": "Facile",
+  "difficulty.medium": "Moyen",
+  "difficulty.hard": "Difficile",
+
+  "questionType.true_false": "Vrai / Faux",
+  "questionType.single_choice": "Choix unique",
+  "questionType.multiple_choice": "Choix multiple",
+
+  "nav.home": "Accueil",
+  "nav.conversation": "Conversation",
+
+  "quizzes.loading": "Chargement des quiz…",
+  "quizzes.error": "Une erreur est survenue",
+  "quizzes.errorHint": "Impossible de charger les quiz. Veuillez réessayer.",
+
+  "quiz.configuration": "Configuration",
+  "quiz.versions": "Versions",
+
+  "newQuiz.questionCounting": "{number} Questions",
+  "newQuiz.defaultLanguage": "Langue par défaut",
+  "newQuiz.additionalPromptPlaceholder": "ex. Ce quiz est destiné aux employés du service commercial. Concentrez-vous sur des scénarios pratiques et des applications réelles.",
+  "newQuiz.documents": "Documents",
+
+  "chat.title": "Démarrer une conversation",
+  "chat.description": "Tapez un message ci-dessous pour commencer.",
+  "chat.placeholder": "Tapez un message…",
+
+  "editableQuestion.title": "Question {number}",
+  "editableQuestion.addDistractor": "Ajouter un distracteur",
+  "editableQuestion.addingDistractor": "Ajout d’un distracteur...",
+  "editableQuestion.options": "Options",
+
+  "languages.label": "Langues",
+
+  "status.queued": "En attente",
+  "status.architecting": "Conception",
+  "status.building": "Génération",
+  "status.draft": "Brouillon",
+  "status.published": "Publié",
+  "status.archived": "Archivé",
+  "status.failed": "Échec"
+
+}

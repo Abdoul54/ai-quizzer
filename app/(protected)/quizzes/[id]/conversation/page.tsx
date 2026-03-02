@@ -8,22 +8,25 @@ import { useApproveQuiz } from "@/hooks/api/use-approve-quiz"
 import { useQuizConversation } from "@/hooks/api/use-quiz"
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs"
 import { getDirection, LanguageCode } from "@/lib/languages"
+import { useUILanguage } from "@/providers/ui-language-provider"
 import { CheckCheck } from "lucide-react"
 import { useParams } from "next/navigation"
 
 
 const Page = () => {
     const { id } = useParams()
+    const { t } = useUILanguage()
+
 
     const { data } = useQuizConversation(String(id))
     const approveQuiz = useApproveQuiz(String(id));
 
 
     useSetBreadcrumbs([
-        { label: "Home", href: "/" },
-        { label: "Quizzes", href: "/quizzes" },
+        { label: t('nav.home'), href: "/" },
+        { label: t('nav.quizzes'), href: "/quizzes" },
         { label: data?.quiz?.title || String(id), href: `/quizzes/${id}` },
-        { label: "Conversation" }
+        { label: t('nav.conversation') }
     ]);
 
     return (

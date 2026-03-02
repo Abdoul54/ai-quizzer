@@ -20,6 +20,7 @@ import {
     PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
 import { draftKeys, useQuizConversation } from "@/hooks/api/use-quiz";
+import { useUILanguage } from "@/providers/ui-language-provider";
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
@@ -29,6 +30,7 @@ import { useEffect } from "react";
 const Chat = ({ quizId }: { quizId: string }) => {
     const { data: conversation } = useQuizConversation(quizId);
     const queryClient = useQueryClient();
+    const { t } = useUILanguage()
 
 
     const { messages, sendMessage, setMessages, status } = useChat({
@@ -62,8 +64,8 @@ const Chat = ({ quizId }: { quizId: string }) => {
                     {messages.length === 0 ? (
                         <ConversationEmptyState
                             icon={<MessageSquare className="size-8" />}
-                            title="Start a conversation"
-                            description="Type a message below to get started."
+                            title={t("chat.title")}
+                            description={t("chat.description")}
                         />
                     ) : (
                         messages.map((message) => (
@@ -90,7 +92,7 @@ const Chat = ({ quizId }: { quizId: string }) => {
                 <PromptInputProvider>
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
-                            <PromptInputTextarea placeholder="Type a message…" />
+                            <PromptInputTextarea placeholder={t("chat.placeholder")} />
                         </PromptInputBody>
                         <PromptInputFooter className="justify-end">
                             <PromptInputSubmit

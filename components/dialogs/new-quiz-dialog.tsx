@@ -6,7 +6,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -20,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreateQuiz } from "@/hooks/api/use-quiz";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createQuizSchema, type CreateQuizInput } from "@/lib/validators";
 import { Slider } from "../ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
@@ -41,9 +40,10 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import StepProgress from "../step-progress";
-import { languages } from "@/lib/languages";
+import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { difficultyLevels, questionTypes } from "../cards/quiz-card";
+import { useUILanguage } from "@/providers/ui-language-provider";
 
 const filesIcons: Record<string, React.ReactElement> = {
     "application/pdf": <FileText className="h-4 w-4" />,
@@ -59,33 +59,35 @@ const filesIcons: Record<string, React.ReactElement> = {
 };
 
 const steps: {
-    preloadTitle?: string;
-    loadTitle?: string;
-    postLoadTitle?: string;
+    preloadTitle: "step.0.pre" | "step.1.pre" | "step.2.pre";
+    loadTitle: "step.0.loading" | "step.1.loading" | "step.2.loading";
+    postLoadTitle: "step.0.done" | "step.1.done" | "step.2.done";
     Icon: LucideIcon;
 }[] = [
         {
-            preloadTitle: "Analyze Quiz Details",
-            loadTitle: "Saving Quiz Details",
-            postLoadTitle: "Quiz Details Saved",
+            preloadTitle: "step.0.pre",
+            loadTitle: "step.0.loading",
+            postLoadTitle: "step.0.done",
             Icon: Database,
         },
         {
-            preloadTitle: "Design Quiz Structure",
-            loadTitle: "Designing Quiz Structure",
-            postLoadTitle: "Quiz Structure Designed",
+            preloadTitle: "step.1.pre",
+            loadTitle: "step.1.loading",
+            postLoadTitle: "step.1.done",
             Icon: Brain,
         },
         {
-            preloadTitle: "Generate Questions",
-            loadTitle: "Generating Quiz Questions",
-            postLoadTitle: "Quiz Questions Generated",
+            preloadTitle: "step.2.pre",
+            loadTitle: "step.2.loading",
+            postLoadTitle: "step.2.done",
             Icon: Hammer,
         },
-    ];
+    ]
 
-const NewQuizDialog = () => {
+const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
     const { createQuiz } = useCreateQuiz();
+    const { t } = useUILanguage()
+
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const router = useRouter();
@@ -104,8 +106,8 @@ const NewQuizDialog = () => {
             questionCount: 10,
             difficulty: "medium",
             questionTypes: [],
-            defaultLanguage: "en",
-            languages: ["en"],
+            defaultLanguage: lang,
+            languages: [lang],
             additionalPrompt: "",
         },
     });
@@ -156,12 +158,20 @@ const NewQuizDialog = () => {
         );
     };
 
+    useEffect(() => {
+
+        if (lang) {
+            form?.setValue("defaultLanguage", lang)
+            form?.setValue("languages", [lang])
+        }
+    }, [lang, form])
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline">
                     <PlusCircle />
-                    New Quiz
+                    {t("quizzes.new")}
                 </Button>
             </DialogTrigger>
 
@@ -173,15 +183,16 @@ const NewQuizDialog = () => {
                 ) : (
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <DialogHeader className="mb-4">
-                            <DialogTitle>Create quiz</DialogTitle>
-                            <DialogDescription>
+                            <DialogTitle>{t("newQuiz.dialogTitle")}</DialogTitle>
+                            {/* <DialogDescription>
+                                {t("newQuiz.dialogTitle")}
                                 Your quiz will be created as a draft.
-                            </DialogDescription>
+                            </DialogDescription> */}
                         </DialogHeader>
 
                         <FieldGroup className="h-[80vh] overflow-y-auto px-2">
                             <Field {...(form.formState.errors.title && { "data-invalid": true })}>
-                                <Label htmlFor="title">Title</Label>
+                                <Label htmlFor="title">{t("newQuiz.quizTitle")}</Label>
                                 <Input id="title" {...form.register("title")} autoFocus />
                                 {form.formState.errors.title && (
                                     <FieldError>{form.formState.errors.title.message}</FieldError>
@@ -189,7 +200,7 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.topic && { "data-invalid": true })}>
-                                <Label htmlFor="topic">Topic</Label>
+                                <Label htmlFor="topic">{t("newQuiz.topic")}</Label>
                                 <Input id="topic" {...form.register("topic")} />
                                 {form.formState.errors.topic && (
                                     <FieldError>{form.formState.errors.topic.message}</FieldError>
@@ -198,9 +209,9 @@ const NewQuizDialog = () => {
 
                             <Field {...(form.formState.errors.questionCount && { "data-invalid": true })}>
                                 <div className="flex items-center justify-between gap-2">
-                                    <Label htmlFor="questionCount">Number of Questions</Label>
+                                    <Label htmlFor="questionCount">{t("newQuiz.questionCount")}</Label>
                                     <span className="text-muted-foreground text-sm">
-                                        {form.watch("questionCount") || 0} questions
+                                        {t("newQuiz.questionCounting", { number: form.watch("questionCount") || 0 })}
                                     </span>
                                 </div>
                                 <Slider
@@ -216,7 +227,7 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.difficulty && { "data-invalid": true })}>
-                                <Label htmlFor="difficulty">Difficulty</Label>
+                                <Label htmlFor="difficulty">{t("newQuiz.difficulty")}</Label>
                                 <ToggleGroup
                                     type="single"
                                     size="sm"
@@ -243,7 +254,7 @@ const NewQuizDialog = () => {
                                                     transition: "all 0.2s",
                                                 }}
                                             >
-                                                {difficulty?.label}
+                                                {t(difficulty?.label)}
                                             </ToggleGroupItem>
                                         );
                                     })}
@@ -254,7 +265,7 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.questionTypes && { "data-invalid": true })}>
-                                <Label htmlFor="questionTypes">Question Types</Label>
+                                <Label htmlFor="questionTypes">{t("newQuiz.questionTypes")}</Label>
                                 <ToggleGroup
                                     type="multiple"
                                     size="sm"
@@ -280,7 +291,7 @@ const NewQuizDialog = () => {
                                                     transition: "all 0.2s",
                                                 }}
                                             >
-                                                {type?.label}
+                                                {t(type?.label)}
                                             </ToggleGroupItem>
                                         );
                                     })}
@@ -291,7 +302,7 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.defaultLanguage && { "data-invalid": true })}>
-                                <Label htmlFor="defaultLanguage">Default Language</Label>
+                                <Label htmlFor="defaultLanguage">{t("newQuiz.defaultLanguage")}</Label>
                                 <Select
                                     value={form.watch("defaultLanguage")}
                                     onValueChange={(v) => {
@@ -306,7 +317,7 @@ const NewQuizDialog = () => {
                                         <SelectGroup>
                                             {languages?.map((l) => (
                                                 <SelectItem key={l?.code} value={l?.code}>
-                                                    {l.labels?.en}
+                                                    {getLanguageLabel(l?.code, lang)}
                                                 </SelectItem>
                                             ))}
                                         </SelectGroup>
@@ -318,7 +329,7 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.languages && { "data-invalid": true })}>
-                                <Label htmlFor="languages">Languages</Label>
+                                <Label htmlFor="languages">{t("newQuiz.languages")}</Label>
                                 <ToggleGroup
                                     type="multiple"
                                     size="sm"
@@ -333,6 +344,7 @@ const NewQuizDialog = () => {
                                     {languages?.map((l) => {
                                         const isSelected = (form.watch("languages") ?? []).includes(l?.code as any);
                                         const isDefaultLang = form.watch("defaultLanguage") === l?.code;
+                                        const label = getLanguageLabel(l?.code, lang)
                                         return (
                                             <ToggleGroupItem
                                                 className="col-span-1"
@@ -346,7 +358,7 @@ const NewQuizDialog = () => {
                                                     transition: "all 0.2s",
                                                 }}
                                             >
-                                                {l.labels?.en}
+                                                {label}
                                             </ToggleGroupItem>
                                         );
                                     })}
@@ -357,12 +369,12 @@ const NewQuizDialog = () => {
                             </Field>
 
                             <Field {...(form.formState.errors.additionalPrompt && { "data-invalid": true })}>
-                                <Label htmlFor="additionalPrompt">Additional Prompt</Label>
+                                <Label htmlFor="additionalPrompt">{t("newQuiz.additionalPrompt")}</Label>
                                 <Textarea
                                     id="additionalPrompt"
                                     rows={5}
                                     maxLength={1000}
-                                    placeholder="e.g. This quiz is intended for employees in the sales department. Focus on practical scenarios and real-world applications."
+                                    placeholder={t("newQuiz.additionalPromptPlaceholder")}
                                     spellCheck
                                     {...form.register("additionalPrompt")}
                                 />
@@ -373,7 +385,7 @@ const NewQuizDialog = () => {
 
                             <Field>
                                 <div className="flex justify-between items-center gap-2">
-                                    <Label htmlFor="documents">Documents</Label>
+                                    <Label htmlFor="documents">{t("newQuiz.documents")}</Label>
                                     <Button
                                         variant="outline"
                                         type="button"
@@ -433,11 +445,11 @@ const NewQuizDialog = () => {
                         <DialogFooter className="mt-4">
                             <DialogClose asChild>
                                 <Button type="button" variant="outline">
-                                    Cancel
+                                    {t("newQuiz.cancel")}
                                 </Button>
                             </DialogClose>
                             <Button type="submit" disabled={submitting}>
-                                {submitting ? "Creating..." : "Create"}
+                                {t("newQuiz.create")}
                             </Button>
                         </DialogFooter>
                     </form>

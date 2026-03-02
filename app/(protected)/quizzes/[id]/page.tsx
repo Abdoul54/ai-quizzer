@@ -1,6 +1,6 @@
 'use client'
 
-import { difficultyLevels, questionType, statuses } from "@/components/cards/quiz-card";
+import { difficultyLevels, questionType, questionTypes, statuses } from "@/components/cards/quiz-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useQuiz } from "@/hooks/api/use-quiz";
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs";
 import { useSession } from "@/lib/auth-client";
 import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
+import { useUILanguage } from "@/providers/ui-language-provider";
 import {
     BookOpen,
     Gauge,
@@ -19,7 +20,8 @@ import {
     Play,
     Settings2,
     SquareStack,
-    Brain
+    Brain,
+    Languages
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -52,19 +54,21 @@ const Page = () => {
 
     const { id } = useParams()
     const router = useRouter()
-    const { data } = useSession()
-    const userLang = data?.user?.language || 'en'
+    const { t, lang } = useUILanguage()
+    const userLang = lang
 
     const { data: quiz } = useQuiz(String(id))
 
     useSetBreadcrumbs([
-        { label: "Home", href: "/" },
-        { label: "Quizzes", href: "/quizzes" },
+        { label:t('nav.home'), href: "/" },
+        { label: t('nav.quizzes'), href: "/quizzes" },
         { label: quiz?.title || String(id) },
     ]);
 
-    const difficulty = difficultyLevels?.find(diff => diff?.value === quiz?.difficulty)?.label
-
+    const difficulty = difficultyLevels?.find(diff => diff?.value === quiz?.difficulty)?.label as "difficulty.easy" | "difficulty.medium" | "difficulty.hard"
+    const quizQuestionTypes = questionTypes?.filter(type =>
+        quiz?.questionTypes?.includes(type?.value)
+    )
 
     return (
         <div className="flex flex-col h-full">
@@ -77,11 +81,11 @@ const Page = () => {
 
                         <Button variant="outline" size="sm" onClick={() => router.push(`/quiz/${id}`)}>
                             <Play className="w-4 h-4 mr-2" />
-                            Pass the quiz
+                            {t('quiz.passQuiz')}
                         </Button>
                         <Button size="sm" onClick={() => router.push(`/quizzes/${id}/conversation`)}>
                             <Brain className="w-4 h-4 mr-2" />
-                            Edit Questions
+                            {t('quiz.edit')}
                         </Button>
                     </div>
                 </div>
@@ -94,14 +98,14 @@ const Page = () => {
                     {quiz?.questionCount && (
                         <Badge variant="outline" className="rounded bg-background">
                             <Hash className="w-3 h-3 mr-1" />
-                            {quiz.questionCount} Questions
+                            {t("quiz.questionCount", { number: quiz?.questionCount })}
                         </Badge>
                     )}
 
                     {quiz?.difficulty && (
                         <Badge variant="outline" className="rounded bg-warning/10 text-warning border-warning">
                             <Gauge className="w-3 h-3 mr-1" />
-                            {difficulty}
+                            {t(difficulty)}
                         </Badge>
                     )}
                     {/* {data?.language && (
@@ -116,42 +120,42 @@ const Page = () => {
             <div className="grid grid-cols-6 gap-2 p-4">
                 <Card className="col-span-4">
                     <CardHeader>
-                        <CardTitle>
-                            <SquareStack className="w-4 h-4 mr-2 inline-block" />
-                            Versions
+                        <CardTitle className="flex gap-1 items-center">
+                            <SquareStack className="w-4 h-4 inline-block" />
+                            {t("quiz.versions")}
                         </CardTitle>
                     </CardHeader>
                 </Card>
                 {/* Configuration Sidebar */}
                 <Card className="col-span-2">
                     <CardHeader>
-                        <CardTitle>
-                            <Settings2 className="w-4 h-4 mr-2 inline-block" />
-                            Configuration
+                        <CardTitle className="flex gap-1 items-center">
+                            <Settings2 className="w-4 h-4 inline-block" />
+                            {t("quiz.configuration")}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-5">
                         {quiz?.status && (
                             <MetaRow
                                 icon={statuses[quiz?.status as keyof typeof statuses]?.icon || Settings2}
-                                label="Status"
-                                value={statuses[quiz?.status as keyof typeof statuses]?.label || quiz?.status}
+                                label={t("quiz.status")}
+                                value={t(statuses[quiz?.status as keyof typeof statuses]?.label) || quiz?.status}
                             />
                         )}
                         {quiz?.topic && (
                             <MetaRow
                                 icon={BookOpen}
-                                label="Topic"
+                                label={t("quiz.topic")}
                                 value={quiz.topic}
                             />
                         )}
 
-                        {quiz?.questionTypes && (
-                            <MetaRow icon={Layers} label="Question Types">
+                        {quizQuestionTypes && (
+                            <MetaRow icon={Layers} label={t('quiz.questionTypes')}>
                                 <div className="flex flex-wrap gap-2 mt-1">
-                                    {quiz.questionTypes.map((type: string, i: number) => (
+                                    {quizQuestionTypes.map((type, i) => (
                                         <Badge key={i} variant="outline" className="text-xs rounded bg-info/10 text-info border-info">
-                                            {questionType[type as keyof typeof questionType] || type}
+                                            {t(type?.label)}
                                         </Badge>
                                     ))}
                                 </div>
@@ -159,7 +163,7 @@ const Page = () => {
                         )}
 
                         {quiz?.languages && (
-                            <MetaRow icon={Layers} label="Question Types">
+                            <MetaRow icon={Languages} label={t('quiz.languages')}>
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {quiz.languages.map((lang: string, i: number) => (
                                         <Badge key={i} variant="outline" className="text-xs rounded bg-info/10 text-info border-info">
@@ -173,7 +177,7 @@ const Page = () => {
                         {quiz?.additionalPrompt && (
                             <MetaRow
                                 icon={MessageSquareQuote}
-                                label="Additional Prompt"
+                                label={t("quiz.additionalPrompt")}
                                 value={quiz.additionalPrompt}
                             />
                         )}

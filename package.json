@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "docker:prod": "docker compose up -d",
+    "docker:dev": "docker compose -f docker-compose-dev.yml up -d",
+    "worker": "npx tsx workers/index.ts",
+    "push": "npx drizzle-kit push",
+    "studio": "npx drizzle-kit studio",
+    "translation": "../../check-translations.sh lib/locales/"
   },
   "dependencies": {
     "@ai-sdk/mistral": "^3.0.20",

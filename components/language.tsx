@@ -38,10 +38,10 @@ export function Language() {
                         >
                             <Avatar className="h-8 w-8 rounded-lg">
                                 <AvatarFallback className="rounded-lg">
-                                    <Globe className="size-4" />
+                                    <Globe className="size-4 stroke-primary" />
                                 </AvatarFallback>
                             </Avatar>
-                            <div dir="rtl" className="font-medium">
+                            <div className="font-semibold">
                                 {language}
                             </div>
                         </SidebarMenuButton>
@@ -53,7 +53,7 @@ export function Language() {
                         sideOffset={4}
                     >
                         <DropdownMenuLabel>
-                            Languages
+                            {t('languages.label')}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>

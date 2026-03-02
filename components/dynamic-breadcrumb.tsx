@@ -35,7 +35,7 @@ export function DynamicBreadcrumb() {
                                     </BreadcrumbLink>
                                 )}
                             </BreadcrumbItem>
-                            {!isLast && <BreadcrumbSeparator className="hidden md:block" />}
+                            {!isLast && <BreadcrumbSeparator className="hidden md:block rtl:rotate-180" />}
                         </React.Fragment>
                     );
                 })}

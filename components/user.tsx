@@ -31,7 +31,6 @@ import { useRouter } from "next/navigation"
 import { signOut, useSession } from "@/lib/auth-client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Skeleton } from "./ui/skeleton"
 import { useUILanguage } from "@/providers/ui-language-provider"
 
 export function User() {
@@ -58,6 +57,14 @@ export function User() {
         }
     }
 
+    const initials = data?.user?.name
+        ?.trim()
+        .split(/\s+/)
+        .map(word => word[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || '';
+
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -66,7 +73,11 @@ export function User() {
                         size="lg"
                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                     >
-                        <Skeleton className="size-8 shrink-0 rounded" />
+                        <Avatar className="h-8 w-8 bg-accent animate-pulse rounded-md">
+                            <AvatarFallback className="rounded-lg bg-primary">
+                                <User2 className="size-4 stroke-primary-foreground" />
+                            </AvatarFallback>
+                        </Avatar>
                     </SidebarMenuButton>
                 ) : (
                     <DropdownMenu>
@@ -77,8 +88,8 @@ export function User() {
                             >
                                 <Avatar className="h-8 w-8 rounded-lg">
                                     <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                    <AvatarFallback className="rounded-lg">
-                                        <span>{data?.user?.name?.[0] ?? <User2 className="size-4" />}</span>
+                                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                                        <span>{initials ?? <User2 className="size-4" />}</span>
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -98,8 +109,8 @@ export function User() {
                                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                     <Avatar className="h-8 w-8 rounded-lg">
                                         <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                        <AvatarFallback className="rounded-lg">
-                                            {data?.user?.name?.[0]}
+                                        <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                                            <span>{initials ?? <User2 className="size-4" />}</span>
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">

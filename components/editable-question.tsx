@@ -9,11 +9,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "./ui/select";
-import { Trash2, Sparkles, Plus, Wand2 } from "lucide-react";
+import { Trash2, Sparkles, Plus, Wand2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useImproveQuestion } from "@/hooks/api/use-improve-question";
 import { GradientIcon } from "./gradient-icon";
 import { Direction } from "@/lib/languages";
+import { useUILanguage } from "@/providers/ui-language-provider";
+import { questionTypes } from "./cards/quiz-card";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
@@ -80,6 +82,8 @@ export const EditableQuestion = ({
         Object.fromEntries(question.options.map(o => [o.id, o.optionText]))
     );
 
+    const { t } = useUILanguage()
+
     const { improveQuestionText, improveOption, changeType, addDistractor } =
         useImproveQuestion(quizId);
 
@@ -141,7 +145,7 @@ export const EditableQuestion = ({
         >
             <CardHeader className="flex items-center justify-between">
                 <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                    Question {index + 1}
+                    {t('editableQuestion.title', { number: index + 1 })}
                 </CardTitle>
 
                 <CardAction className="flex items-center gap-1">
@@ -160,9 +164,9 @@ export const EditableQuestion = ({
                         </SelectTrigger>
 
                         <SelectContent>
-                            <SelectItem value="single_choice">Single choice</SelectItem>
-                            <SelectItem value="multiple_choice">Multiple choice</SelectItem>
-                            <SelectItem value="true_false">True / False</SelectItem>
+                            {questionTypes?.map((type) =>
+                                <SelectItem key={type.value} value={type.value}>{t(type?.label)}</SelectItem>
+                            )}
                         </SelectContent>
                     </Select>
 
@@ -223,7 +227,7 @@ export const EditableQuestion = ({
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                            Options
+                            {t('editableQuestion.options')}
                         </span>
 
                         {canAddDistractor && (
@@ -251,10 +255,10 @@ export const EditableQuestion = ({
                                 }}
                             >
                                 {addDistractor.isPending ? (
-                                    "Adding..."
+                                    t("editableQuestion.addingDistractor")
                                 ) : (
                                     <>
-                                        <Plus className="w-3 h-3" /> Add distractor
+                                        <Plus className="w-3 h-3" /> {t("editableQuestion.addDistractor")}
                                     </>
                                 )}
                             </Button>
@@ -273,18 +277,25 @@ export const EditableQuestion = ({
                                         : "border-border bg-transparent"
                             )}
                         >
-                            <button
+                            <Button
+                                size="icon-xs" variant='outline' disabled={isLocked}
                                 onClick={() =>
                                     handleCorrectToggle(option.id, option.isCorrect)
                                 }
-                                disabled={isLocked}
                                 className={cn(
-                                    "w-3.5 h-3.5 rounded-full border-2 transition-colors",
+                                    "transition-colors",
                                     option.isCorrect
-                                        ? "bg-green-500 border-green-500"
-                                        : "border-muted-foreground hover:border-green-400"
+                                        ? "border-success"
+                                        : "border-muted-foreground hover:border-success"
                                 )}
-                            />
+                            >
+                                <Circle className={cn(
+                                    "transition-colors",
+                                    option.isCorrect
+                                        ? "fill-success stroke-success"
+                                        : "border-muted-foreground hover:stroke-success!"
+                                )} />
+                            </Button>
 
                             <Input
                                 value={optionTexts[option.id] ?? option.optionText}

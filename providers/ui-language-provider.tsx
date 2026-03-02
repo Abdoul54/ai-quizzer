@@ -10,6 +10,7 @@ import type { LanguageCode } from "@/lib/languages";
 interface UILanguageContextValue {
     lang: LanguageCode;
     dir: "ltr" | "rtl";
+    isRTL: boolean;
     t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
@@ -18,6 +19,7 @@ interface UILanguageContextValue {
 const UILanguageContext = createContext<UILanguageContextValue>({
     lang: "en",
     dir: "ltr",
+    isRTL: false,
     t: (key) => key,
 });
 
@@ -44,6 +46,7 @@ export function UILanguageProvider({ children, initialLang = "en" }: UILanguageP
     const value = useMemo<UILanguageContextValue>(() => ({
         lang,
         dir,
+        isRTL: dir === 'rtl',
         t: createT(lang),
     }), [lang, dir]);
 

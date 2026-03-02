@@ -1,0 +1,121 @@
+{
+  "app.name": "AI Quizzer",
+
+  "nav.platform": "Plataforma",
+  "nav.quizzes": "Cuestionarios",
+
+  "user.account": "Cuenta",
+  "user.profile": "Perfil",
+  "user.settings": "Configuración",
+  "user.signOut": "Cerrar sesión",
+
+  "profile.title": "Perfil",
+  "profile.subtitle": "Gestiona la configuración de tu cuenta",
+  "profile.personalInfo": "Información personal",
+  "profile.personalInfoDesc": "Actualiza tu nombre y el idioma preferido.",
+  "profile.name": "Nombre",
+  "profile.email": "Correo electrónico",
+  "profile.emailNote": "El correo no se puede cambiar aquí.",
+  "profile.language": "Idioma",
+  "profile.saveChanges": "Guardar cambios",
+  "profile.password": "Contraseña",
+  "profile.passwordDesc": "Elige una contraseña segura. Las otras sesiones se cerrarán.",
+  "profile.currentPassword": "Contraseña actual",
+  "profile.newPassword": "Nueva contraseña",
+  "profile.updatePassword": "Actualizar contraseña",
+
+  "quizzes.title": "Cuestionarios",
+  "quizzes.new": "Nuevo cuestionario",
+  "quizzes.empty": "Aún no hay cuestionarios",
+  "quizzes.emptyHint": "Crea tu primer cuestionario para empezar.",
+
+  "quiz.passQuiz": "Realizar el cuestionario",
+  "quiz.edit": "Editar",
+  "quiz.difficulty": "Dificultad",
+  "quiz.questionCount": "Preguntas",
+  "quiz.questionTypes": "Tipos de preguntas",
+  "quiz.languages": "Idiomas",
+  "quiz.additionalPrompt": "Instrucciones adicionales",
+  "quiz.status": "Estado",
+  "quiz.topic": "Tema",
+
+  "newQuiz.dialogTitle": "Crear nuevo cuestionario",
+  "newQuiz.quizTitle": "Título del cuestionario",
+  "newQuiz.topic": "Tema (opcional)",
+  "newQuiz.questionCount": "Número de preguntas",
+  "newQuiz.difficulty": "Dificultad",
+  "newQuiz.questionTypes": "Tipos de preguntas",
+  "newQuiz.languages": "Idiomas",
+  "newQuiz.additionalPrompt": "Instrucciones adicionales",
+  "newQuiz.uploading": "Subiendo...",
+  "newQuiz.create": "Crear cuestionario",
+  "newQuiz.cancel": "Cancelar",
+
+  "step.0.pre": "Analizar detalles",
+  "step.0.loading": "Guardando detalles...",
+  "step.0.done": "Detalles guardados",
+  "step.1.pre": "Diseñar estructura",
+  "step.1.loading": "Diseñando estructura...",
+  "step.1.done": "Estructura diseñada",
+  "step.2.pre": "Generar preguntas",
+  "step.2.loading": "Generando preguntas...",
+  "step.2.done": "Preguntas generadas",
+
+  "take.selectLanguage": "Selecciona tu idioma",
+  "take.start": "Iniciar cuestionario",
+  "take.next": "Siguiente",
+  "take.submit": "Enviar",
+  "take.results": "Resultados",
+  "take.score": "{score} de {total} correctas",
+  "take.perfectScore": "¡Puntuación perfecta!",
+  "take.wellDone": "¡Bien hecho!",
+  "take.keepPracticing": "Sigue practicando.",
+  "take.loadFailed": "Error al cargar el cuestionario.",
+  "take.question": "Pregunta",
+
+  "common.loading": "Cargando...",
+  "common.error": "Algo salió mal.",
+
+  "difficulty.easy": "Fácil",
+  "difficulty.medium": "Medio",
+  "difficulty.hard": "Difícil",
+
+  "questionType.true_false": "Verdadero / Falso",
+  "questionType.single_choice": "Selección única",
+  "questionType.multiple_choice": "Selección múltiple",
+
+  "nav.home": "Inicio",
+  "nav.conversation": "Conversación",
+
+  "quizzes.loading": "Cargando cuestionarios…",
+  "quizzes.error": "Algo salió mal",
+  "quizzes.errorHint": "No se pudieron cargar los cuestionarios. Inténtalo de nuevo.",
+
+  "quiz.configuration": "Configuración",
+  "quiz.versions": "Versiones",
+
+  "newQuiz.questionCounting": "{number} Preguntas",
+  "newQuiz.defaultLanguage": "Idioma predeterminado",
+  "newQuiz.additionalPromptPlaceholder": "ej. Este cuestionario está destinado a empleados del departamento de ventas. Enfócate en escenarios prácticos y aplicaciones reales.",
+  "newQuiz.documents": "Documentos",
+
+  "chat.title": "Iniciar una conversación",
+  "chat.description": "Escribe un mensaje abajo para comenzar.",
+  "chat.placeholder": "Escribe un mensaje…",
+
+  "editableQuestion.title": "Pregunta {number}",
+  "editableQuestion.addDistractor": "Añadir opción incorrecta",
+  "editableQuestion.addingDistractor": "Añadiendo opción...",
+  "editableQuestion.options": "Opciones",
+
+  "languages.label": "Idiomas",
+
+  "status.queued": "En cola",
+  "status.architecting": "Diseñando",
+  "status.building": "Generando",
+  "status.draft": "Borrador",
+  "status.published": "Publicado",
+  "status.archived": "Archivado",
+  "status.failed": "Fallido"
+
+}

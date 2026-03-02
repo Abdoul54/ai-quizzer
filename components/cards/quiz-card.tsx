@@ -10,21 +10,29 @@ import {
     Brain,
     Hammer,
     XCircle,
+    LucideIcon,
 } from "lucide-react";
+import { useUILanguage } from "@/providers/ui-language-provider";
+import { cn } from "@/lib/utils";
 interface QuizCardProps {
     quiz: Quiz;
     action?: () => void;
 }
 
-export const statuses = {
-    queued: { label: "Queued", icon: Clock },
-    architecting: { label: "Designing", icon: Brain },
-    building: { label: "Generating", icon: Hammer },
-    draft: { label: "Draft", icon: PencilRuler },
-    published: { label: "Published", icon: CheckLine },
-    archived: { label: "Archived", icon: Archive },
-    failed: { label: "Failed", icon: XCircle },
-}
+type statusTranslation = "status.queued" | "status.architecting" | "status.building" | "status.draft" | "status.published" | "status.archived" | "status.failed"
+
+export const statuses: Record<
+    string,
+    { label: statusTranslation; icon: LucideIcon }
+> = {
+    queued: { label: "status.queued", icon: Clock },
+    architecting: { label: "status.architecting", icon: Brain },
+    building: { label: "status.building", icon: Hammer },
+    draft: { label: "status.draft", icon: PencilRuler },
+    published: { label: "status.published", icon: CheckLine },
+    archived: { label: "status.archived", icon: Archive },
+    failed: { label: "status.failed", icon: XCircle },
+};
 
 export const questionType = {
     multiple_choice: "Multiple Choice",
@@ -33,32 +41,35 @@ export const questionType = {
 }
 
 
-export const questionTypes: { value: QuestionType; label: string }[] = [
-    {
-        value: "multiple_choice",
-        label: "Multiple Choice"
-    },
-    {
-        value: "true_false",
-        label: "True/False"
-    },
-    {
-        value: "single_choice",
-        label: "Single Choice"
-    }
-]
-export const difficultyLevels: { value: string; label: string }[] = [
+export const questionTypes: {
+    value: QuestionType; label: "questionType.multiple_choice" | "questionType.true_false" | "questionType.single_choice"
+}[] = [
+        {
+            value: "multiple_choice",
+            label: "questionType.multiple_choice"
+        },
+        {
+            value: "true_false",
+            label: "questionType.true_false"
+        },
+        {
+            value: "single_choice",
+            label: "questionType.single_choice"
+        }
+    ]
+
+export const difficultyLevels: { value: string; label: "difficulty.easy" | "difficulty.medium" | "difficulty.hard" }[] = [
     {
         value: "easy",
-        label: "Easy"
+        label: "difficulty.easy"
     },
     {
         value: "medium",
-        label: "Medium"
+        label: "difficulty.medium"
     },
     {
         value: "hard",
-        label: "Hard"
+        label: "difficulty.hard"
     }
 ]
 
@@ -73,6 +84,7 @@ const ACTIVE_STATUSES = ["queued", "architecting", "building"];
 const QuizCard = ({ quiz, action }: QuizCardProps) => {
     const isActive = ACTIVE_STATUSES.includes(quiz?.status);
     const isClickable = (quiz?.status === "draft" || quiz?.status === "published" || quiz?.status === "archived") && !!action;
+    const { t, isRTL } = useUILanguage()
 
     return (
         <Card
@@ -80,8 +92,8 @@ const QuizCard = ({ quiz, action }: QuizCardProps) => {
             className={isActive ? "animated-gradient" : isClickable ? "cursor-pointer hover:shadow-md transition-shadow ease-in-out" : ""}
         >
             <CardHeader className="relative">
-                <Badge className="absolute right-8 top-0" variant="secondary">
-                    {statuses[quiz?.status as keyof typeof statuses]?.label || quiz?.status}
+                <Badge className={cn("absolute top-0", isRTL ? 'left-8' : 'right-8')} variant="secondary">
+                    {t(statuses[quiz?.status]?.label)}
                 </Badge>
                 <CardTitle>{quiz?.title}</CardTitle>
                 <CardDescription>{quiz?.description}</CardDescription>

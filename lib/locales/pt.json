@@ -1,0 +1,121 @@
+{
+  "app.name": "AI Quizzer",
+
+  "nav.platform": "Plataforma",
+  "nav.quizzes": "Questionários",
+
+  "user.account": "Conta",
+  "user.profile": "Perfil",
+  "user.settings": "Configurações",
+  "user.signOut": "Sair",
+
+  "profile.title": "Perfil",
+  "profile.subtitle": "Gerencie as configurações da sua conta",
+  "profile.personalInfo": "Informações pessoais",
+  "profile.personalInfoDesc": "Atualize seu nome e idioma preferido.",
+  "profile.name": "Nome",
+  "profile.email": "E-mail",
+  "profile.emailNote": "O e-mail não pode ser alterado aqui.",
+  "profile.language": "Idioma",
+  "profile.saveChanges": "Salvar alterações",
+  "profile.password": "Senha",
+  "profile.passwordDesc": "Escolha uma senha forte. Outras sessões serão encerradas.",
+  "profile.currentPassword": "Senha atual",
+  "profile.newPassword": "Nova senha",
+  "profile.updatePassword": "Atualizar senha",
+
+  "quizzes.title": "Questionários",
+  "quizzes.new": "Novo questionário",
+  "quizzes.empty": "Nenhum questionário ainda",
+  "quizzes.emptyHint": "Crie seu primeiro questionário para começar.",
+
+  "quiz.passQuiz": "Fazer o questionário",
+  "quiz.edit": "Editar",
+  "quiz.difficulty": "Dificuldade",
+  "quiz.questionCount": "Perguntas",
+  "quiz.questionTypes": "Tipos de perguntas",
+  "quiz.languages": "Idiomas",
+  "quiz.additionalPrompt": "Instruções adicionais",
+  "quiz.status": "Status",
+  "quiz.topic": "Tema",
+
+  "newQuiz.dialogTitle": "Criar novo questionário",
+  "newQuiz.quizTitle": "Título do questionário",
+  "newQuiz.topic": "Tema (opcional)",
+  "newQuiz.questionCount": "Número de perguntas",
+  "newQuiz.difficulty": "Dificuldade",
+  "newQuiz.questionTypes": "Tipos de perguntas",
+  "newQuiz.languages": "Idiomas",
+  "newQuiz.additionalPrompt": "Instruções adicionais",
+  "newQuiz.uploading": "Carregando...",
+  "newQuiz.create": "Criar questionário",
+  "newQuiz.cancel": "Cancelar",
+
+  "step.0.pre": "Analisar detalhes",
+  "step.0.loading": "Salvando detalhes...",
+  "step.0.done": "Detalhes salvos",
+  "step.1.pre": "Projetar estrutura",
+  "step.1.loading": "Projetando estrutura...",
+  "step.1.done": "Estrutura projetada",
+  "step.2.pre": "Gerar perguntas",
+  "step.2.loading": "Gerando perguntas...",
+  "step.2.done": "Perguntas geradas",
+
+  "take.selectLanguage": "Selecione seu idioma",
+  "take.start": "Iniciar questionário",
+  "take.next": "Próximo",
+  "take.submit": "Enviar",
+  "take.results": "Resultados",
+  "take.score": "{score} de {total} corretas",
+  "take.perfectScore": "Pontuação perfeita!",
+  "take.wellDone": "Muito bem!",
+  "take.keepPracticing": "Continue praticando.",
+  "take.loadFailed": "Falha ao carregar.",
+  "take.question": "Pergunta",
+
+  "common.loading": "Carregando...",
+  "common.error": "Algo deu errado.",
+
+  "difficulty.easy": "Fácil",
+  "difficulty.medium": "Médio",
+  "difficulty.hard": "Difícil",
+
+  "questionType.true_false": "Verdadeiro / Falso",
+  "questionType.single_choice": "Escolha única",
+  "questionType.multiple_choice": "Múltipla escolha",
+
+  "nav.home": "Início",
+  "nav.conversation": "Conversa",
+
+  "quizzes.loading": "Carregando questionários…",
+  "quizzes.error": "Algo deu errado",
+  "quizzes.errorHint": "Não foi possível carregar os questionários. Tente novamente.",
+
+  "quiz.configuration": "Configuração",
+  "quiz.versions": "Versões",
+
+  "newQuiz.questionCounting": "{number} Perguntas",
+  "newQuiz.defaultLanguage": "Idioma padrão",
+  "newQuiz.additionalPromptPlaceholder": "ex. Este questionário é destinado aos funcionários do departamento de vendas. Foque em cenários práticos e aplicações reais.",
+  "newQuiz.documents": "Documentos",
+
+  "chat.title": "Iniciar conversa",
+  "chat.description": "Digite uma mensagem abaixo para começar.",
+  "chat.placeholder": "Digite uma mensagem…",
+
+  "editableQuestion.title": "Pergunta {number}",
+  "editableQuestion.addDistractor": "Adicionar alternativa incorreta",
+  "editableQuestion.addingDistractor": "Adicionando alternativa...",
+  "editableQuestion.options": "Opções",
+
+  "languages.label": "Idiomas",
+
+  "status.queued": "Na fila",
+  "status.architecting": "Projetando",
+  "status.building": "Gerando",
+  "status.draft": "Rascunho",
+  "status.published": "Publicado",
+  "status.archived": "Arquivado",
+  "status.failed": "Falhou"
+
+}
