@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { conversations, quiz } from "@/db/schema";
+import { quiz } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { createQuizSchema } from "@/lib/validators";
 import { eq } from "drizzle-orm";
@@ -70,8 +70,6 @@ export async function POST(req: NextRequest) {
             status: "queued",
         })
         .returning();
-
-    await db.insert(conversations).values({ quizId: created.id });
 
     // Enqueue — idempotent: same quiz can't be queued twice
     await quizQueue.add(

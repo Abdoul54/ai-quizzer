@@ -238,7 +238,6 @@ POSTGRES_DB=ai_quizzer
 ```
 user ──< quiz ──< question ──< option
                 └──< draft        (versioned question snapshots)
-                └──< conversation (agent chat history)
 
 user ──< documents ──< documentChunks (vector embeddings)
 ```

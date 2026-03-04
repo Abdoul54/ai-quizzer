@@ -28,8 +28,6 @@ export const quizStatusEnum = pgEnum("quiz_status", [
     "archived",
     "failed"
 ]);
-export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "tool"]);
-
 
 /*==================================
     AUTH SCHEMA
@@ -222,34 +220,11 @@ export const documentChunks = pgTable("document_chunks", {
     createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const conversations = pgTable("conversations", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    quizId: uuid("quiz_id")
-        .notNull()
-        .references(() => quiz.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at")
-        .defaultNow()
-        .$onUpdate(() => new Date())
-        .notNull(),
-});
-
-export const message = pgTable("message", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    conversationId: uuid("conversation_id")
-        .notNull()
-        .references(() => conversations.id, { onDelete: "cascade" }),
-    role: messageRoleEnum("role").notNull(),
-    content: jsonb("content").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
-});
-
 // ─── Quiz Relations ───────────────────────────────────────────────────────────
 
 export const quizRelations = relations(quiz, ({ one, many }) => ({
     user: one(user, { fields: [quiz.userId], references: [user.id] }),
     questions: many(question),
-    conversations: many(conversations),
     drafts: many(draft),
 }));
 
@@ -279,20 +254,6 @@ export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
     }),
 }));
 
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-    quiz: one(quiz, {
-        fields: [conversations.quizId],
-        references: [quiz.id],
-    }),
-    messages: many(message),
-}));
-
-export const messageRelations = relations(message, ({ one }) => ({
-    conversation: one(conversations, {
-        fields: [message.conversationId],
-        references: [conversations.id],
-    }),
-}));
 
 export const draftRelations = relations(draft, ({ one }) => ({
     quiz: one(quiz, { fields: [draft.quizId], references: [quiz.id] }),

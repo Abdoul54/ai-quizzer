@@ -8,8 +8,6 @@ import type {
     options,
     documents,
     documentChunks,
-    conversations,
-    message,
     draft,
 } from "@/db/schema";
 
@@ -41,11 +39,6 @@ export type NewDocument = InferInsertModel<typeof documents>;
 export type DocumentChunk = InferSelectModel<typeof documentChunks>;
 export type NewDocumentChunk = InferInsertModel<typeof documentChunks>;
 
-export type Conversation = InferSelectModel<typeof conversations>;
-export type NewConversation = InferInsertModel<typeof conversations>;
-
-export type Message = InferSelectModel<typeof message>;
-export type NewMessage = InferInsertModel<typeof message>;
 
 export type Draft = InferSelectModel<typeof draft>;
 
@@ -67,27 +60,10 @@ export type QuestionWithOptions = {
     }[]
 };
 
-export type MessageWithConversation = Message & {
-    conversation: Conversation;
-};
-
-export type ConversationWithMessages = {
-    id: string;
-    quizId: string;
-    createdAt: Date;
-    updatedAt: Date;
-    quiz: {
-        id: string;
-        title: string;
-        defaultLanguage: string;
-    };
-    messages: Message[];
-};
 
 export type QuizWithRelations = Quiz & {
     questions: QuestionWithOptions[];
     uploadedDocuments: Document[];
-    conversations: ConversationWithMessages[];
 };
 
 export type DraftWithQuestions = Draft & {
@@ -117,4 +93,3 @@ export type UpdateQuizPayload = Partial<CreateQuizPayload>;
 
 export type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 export type QuizDifficulty = "easy" | "medium" | "hard";
-export type MessageRole = "user" | "assistant" | "tool";

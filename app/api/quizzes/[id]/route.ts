@@ -27,7 +27,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
         where: and(eq(quiz.id, id), eq(quiz.userId, session.user.id)),
         with: {
             questions: { with: { options: true } },
-            conversations: { with: { messages: true } },
         },
     });
 
