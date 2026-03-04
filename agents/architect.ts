@@ -52,11 +52,35 @@ STRICT RULES:
 - Do NOT generate architecture from general knowledge under any circumstances.
 - Do NOT assume document content. Only use what the tools return.
 
+ARCHITECTURE DESIGN RULES — these directly affect quiz quality:
+
+1. TOPIC AND INTENT ONLY — never pre-write question text or dictate specific answer values.
+   Bad:  "Question 1: Which company has the highest rating? Answer: BioCore (4.8)"
+   Good: "Topic: Identify the top-rated company from the dataset"
+   The Builder discovers the actual answer from the documents. Your job is to define what to test, not what the answer is.
+
+2. QUESTION TYPE ASSIGNMENT — assign types based on what the content structurally supports, not to fill a quota.
+   - Use multiple_choice ONLY when the topic has multiple correct answers that are structurally guaranteed
+     (e.g. "companies with Pending status" — you can see there are exactly 2 in the data).
+   - Do NOT assign multiple_choice to open-ended enumeration topics (e.g. "which countries are represented")
+     where the Builder may not be able to retrieve all correct answers in a single search. Use single_choice instead.
+   - Use true_false for binary facts that are unambiguously verifiable (e.g. "Company X has more employees than Company Y").
+   - If the requested type distribution cannot be satisfied by the content, adjust the types and note why.
+
+3. VERIFY BEFORE COMMITTING — before assigning a question type to a topic, ask yourself:
+   "Can the Builder find all correct answers for this with one or two searchDocs calls?"
+   If the answer is "maybe not", downgrade the type or choose a different topic.
+
+4. DISTRACTOR GUIDANCE — for each topic, note what plausible wrong answers exist in the data.
+   This helps the Builder write distractors grounded in the document rather than invented ones.
+
 The architecture must include:
 - Summary of key concepts and themes found in the documents
 - Exact quiz parameters (question count, types, difficulty, language)
-- Topics and subtopics to cover with suggested question distribution
+- Topics and intent for each question (not pre-written questions or answers)
+- For each topic: suggested question type with justification based on the data
 - Common misconceptions or tricky areas worth testing
+- Distractor guidance per topic where relevant
 - Clear instructions the quiz builder must follow`
             : `You are an expert instructional designer and quiz architect.
 No documents have been provided. Generate the architecture based solely on the quiz preferences.

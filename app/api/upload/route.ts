@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { embed } from "ai";
 import { db } from "@/db";
 import { documents, documentChunks } from "@/db/schema";
-import { extractPdfText } from "@/lib/pdf";
+import { extractText, isSupportedMimeType } from "@/lib/document-extractor";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { uploadLogger } from "@/lib/logger";
@@ -32,15 +32,20 @@ export async function POST(req: Request) {
         let text: string = rawText || "";
 
         if (file) {
+            if (!isSupportedMimeType(file.type)) {
+                log.warn({ fileName: file.name, fileType: file.type }, "Unsupported file type");
+                return Response.json({ error: `Unsupported file type: ${file.type}` }, { status: 400 });
+            }
+
             const extractStart = Date.now();
             const uint8 = new Uint8Array(await file.arrayBuffer());
-            const { text: extracted } = await extractPdfText(uint8);
+            const extracted = await extractText(uint8, file.type);
             text = extracted;
             log.debug({
                 fileName: file.name,
                 extractedLength: text.length,
                 durationMs: Date.now() - extractStart,
-            }, "PDF text extracted");
+            }, "Document text extracted");
         }
 
         if (!text || text.trim().length === 0) {

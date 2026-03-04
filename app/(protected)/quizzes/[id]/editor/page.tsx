@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from "@/components/ui/button"
+import { useApproveQuiz } from "@/hooks/api/use-approve-quiz"
 import { useQuiz, useLatestDraft } from "@/hooks/api/use-quiz"
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs"
 import { getDirection, LanguageCode } from "@/lib/languages"
@@ -7,6 +9,7 @@ import { useUILanguage } from "@/providers/ui-language-provider"
 import { QuestionWithOptions } from "@/types"
 import QuestionPanel from "@/views/editor/question-panel"
 import QuestionsPanel from "@/views/editor/questions-panel"
+import { CheckCheck } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useMemo, useState } from "react"
 
@@ -18,6 +21,8 @@ const Page = () => {
     const { t } = useUILanguage()
     const { data: quiz } = useQuiz(quizId)
     const { data: draft } = useLatestDraft(quizId)
+    const approveQuiz = useApproveQuiz(quizId);
+
 
     useSetBreadcrumbs([
         { label: t('nav.home'), href: "/" },
@@ -47,6 +52,14 @@ const Page = () => {
                 <div className="text-xl line-clamp-1 font-semibold">
                     {quiz?.title}
                 </div>
+                <Button
+                    onClick={() => approveQuiz.mutate()}
+                    disabled={approveQuiz.isPending}
+                    className="gap-2"
+                >
+                    <CheckCheck className="w-4 h-4" />
+                    {approveQuiz.isPending ? "Approving..." : "Approve quiz"}
+                </Button>
             </div>
             <div className="grid grid-cols-5 flex-1 gap-2">
                 <QuestionsPanel

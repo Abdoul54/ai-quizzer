@@ -50,24 +50,41 @@ export const builder = async ({ quizId, architecture, documentIds }: BuilderInpu
             const { output } = await generateText({
                 model: openai(process.env.BUILDER || 'gpt-4o-mini'),
                 output: quizOutputSchema,
-                tools: { searchDocs },
-                stopWhen: stepCountIs(10),
-                system: `You are a quiz question writer.
+                tools: hasDocuments ? { searchDocs } : undefined,
+                stopWhen: stepCountIs(20),
+                system: hasDocuments ? `You are a quiz question writer. Your only source of truth is the content returned by searchDocs.
+
+SEARCH STRATEGY:
+- Before writing any questions, call searchDocs 2–4 times with different queries to gather broad coverage of the document.
+- Then write all questions from the retrieved content in a single final step.
+- You have 20 steps total. Keep searches to the first few steps, then respond.
+
+GROUNDING RULES — these are absolute:
+- Every correct answer must appear explicitly in a searchDocs result. Do not infer, extrapolate, or use general knowledge.
+- Every distractor (incorrect option) must be plausible given the document content but clearly not the answer per the docs.
+- If searchDocs does not return enough content to write a question with confidence, write a simpler question about what was found rather than filling gaps from memory.
+
+QUESTION TYPE RULES:
+- Only use multiple_choice if the document content clearly contains multiple distinct correct answers for that question. Do not force multiple_choice to match the architecture if the content only supports one correct answer — downgrade to single_choice instead.
+- For true_false: exactly 2 options (True, False), one correct.
+- For single_choice: 3–5 options, exactly one correct.
+- For multiple_choice: 3–5 options, 2 or more correct — all correct answers must be explicitly found in the docs.
+
+OTHER RULES:
+- Follow the architecture for question count, difficulty, language, and topic distribution.
+- Write clear, unambiguous questions. No trick wording.
+- Never invent proper nouns (names, places, values, dates) that were not returned by searchDocs.`
+                    : `You are a quiz question writer.
 You receive a quiz architecture written by an instructional designer and must produce the exact questions and answer options it specifies.
-${hasDocuments ? 'You have a searchDoc tool that enables you to search the documents' : ''}
 
 RULES:
 - Follow the architecture exactly: question count, types, difficulty, language, topic distribution.
-${hasDocuments ? `
-- If documentIds are provided you are obliged to search the docs to make the quiz based on them
-- You have 10 steps max so always keep the last step for the response.
-` : ''}
 - For true_false: exactly 2 options (True, False), one correct.
 - For single_choice: 3–5 options, exactly one correct.
 - For multiple_choice: 3–5 options, 2 or more correct.
 - Write clear, unambiguous questions. No trick wording.`,
                 prompt: hasDocuments
-                    ? `Based on these documents ids: ${documentIds.join(', ')}, build the quiz questions from this architecture:\n\n${architecture}`
+                    ? `Document IDs to search: ${documentIds.join(', ')}\n\nBuild the quiz questions from this architecture:\n\n${architecture}`
                     : `Build the quiz questions from this architecture:\n\n${architecture}`,
             });
 

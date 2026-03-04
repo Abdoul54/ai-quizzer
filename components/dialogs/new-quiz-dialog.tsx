@@ -140,16 +140,9 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
             {
                 // Never go backwards — handles skipped steps on fast jobs
                 onStep: (step) => setCurrentStep((prev) => Math.max(prev, step)),
-                onSuccess: (result) => {
+                onSuccess: () => {
                     // Show all steps completed briefly before closing
                     setCurrentStep(steps.length);
-                    setTimeout(() => {
-                        form.reset();
-                        setDocuments([]);
-                        setSubmitting(false);
-                        setOpen(false);
-                        router.push(`/quizzes/${result}/conversation`);
-                    }, 800);
                 },
                 onError: () => {
                     setSubmitting(false);
@@ -405,7 +398,7 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
                                     ref={fileInputRef}
                                     type="file"
                                     className="hidden"
-                                    accept="application/pdf"
+                                    accept=".pdf,.docx,.pptx,.xlsx,.txt,.md"
                                     onChange={(e) => {
                                         const selected = e.target.files?.[0];
                                         if (selected) handleUpload(selected);
