@@ -73,12 +73,6 @@ export const difficultyLevels: { value: string; label: "difficulty.easy" | "diff
     }
 ]
 
-export const difficultyLevel = {
-    easy: "Easy",
-    medium: "Medium",
-    hard: "Hard"
-}
-
 const ACTIVE_STATUSES = ["queued", "architecting", "building"];
 
 const QuizCard = ({ quiz, action }: QuizCardProps) => {

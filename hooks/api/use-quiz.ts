@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
-import type { QuizWithRelations, Quiz, ConversationWithMessages, DraftWithQuestions } from "@/types";
+import type { QuizWithRelations, Quiz, DraftWithQuestions } from "@/types";
 import type { CreateQuizInput, UpdateQuizInput } from "@/lib/validators";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -8,11 +8,6 @@ import type { CreateQuizInput, UpdateQuizInput } from "@/lib/validators";
 export const quizKeys = {
     all: ["quizzes"] as const,
     detail: (id: string) => ["quizzes", id] as const,
-};
-
-export const conversationKeys = {
-    byQuiz: (quizId: string) => ["conversations", "quiz", quizId] as const,
-    detail: (id: string) => ["conversations", id] as const,
 };
 
 export const draftKeys = {
@@ -168,16 +163,6 @@ export function useDeleteQuiz() {
     });
 }
 
-export function useQuizConversation(quizId: string) {
-    return useQuery({
-        queryKey: conversationKeys.byQuiz(quizId),
-        queryFn: async () => {
-            const { data } = await api.get<ConversationWithMessages>(`/quizzes/${quizId}/conversation`);
-            return data;
-        },
-        enabled: !!quizId,
-    });
-}
 
 export function useLatestDraft(quizId: string) {
     return useQuery({
