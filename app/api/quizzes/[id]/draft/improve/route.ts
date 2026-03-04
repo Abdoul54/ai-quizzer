@@ -5,42 +5,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { minionQueue } from "@/lib/queue";
 import { apiLogger } from "@/lib/logger";
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
+const questionSchema = z.object({
+    questionText: z.string(),
+    questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
+    options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
+});
 
 const improveSchema = z.discriminatedUnion("scope", [
     z.object({
-        scope: z.literal("question_text"),
-        question: z.object({
-            questionText: z.string(),
-            questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
-            options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-        }),
-    }),
-    z.object({
-        scope: z.literal("single_option"),
-        questionText: z.string(),
-        option: z.object({ optionText: z.string(), isCorrect: z.boolean() }),
-    }),
-    z.object({
         scope: z.literal("change_type"),
-        question: z.object({
-            questionText: z.string(),
-            questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
-            options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-        }),
+        question: questionSchema,
         newType: z.enum(["true_false", "single_choice", "multiple_choice"]),
     }),
     z.object({
+        scope: z.literal("regenerate_question"),
+        question: questionSchema,
+    }),
+    z.object({
         scope: z.literal("add_distractor"),
-        question: z.object({
-            questionText: z.string(),
-            questionType: z.enum(["single_choice", "multiple_choice"]),
-            options: z.array(z.object({ optionText: z.string(), isCorrect: z.boolean() })),
-        }),
+        question: questionSchema,
+    }),
+    z.object({
+        scope: z.literal("custom_instruction"),
+        question: questionSchema,
+        instruction: z.string().min(1),
+    }),
+    z.object({
+        scope: z.literal("add_question"),
+        existingQuestions: z.array(z.object({ questionText: z.string() })),
+        questionType: z.enum(["true_false", "single_choice", "multiple_choice"]).optional(),
     }),
 ]);
-
-// ─── POST — enqueue job, return jobId immediately ─────────────────────────────
 
 export async function POST(
     req: NextRequest,

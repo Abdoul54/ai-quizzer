@@ -38,7 +38,14 @@ const patchSchema = z.discriminatedUnion("operation", [
     }),
     z.object({
         operation: z.literal("add_question"),
-        question: questionSchema.omit({ id: true }),
+        question: z.object({
+            questionText: z.string(),
+            questionType: z.enum(["true_false", "single_choice", "multiple_choice"]),
+            options: z.array(z.object({
+                optionText: z.string(),
+                isCorrect: z.boolean(),
+            })),
+        }),
     }),
     z.object({
         operation: z.literal("delete_question"),

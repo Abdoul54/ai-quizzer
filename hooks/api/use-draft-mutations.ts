@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { draftKeys } from "./use-quiz";
+import { QuestionWithOptions } from "@/types";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
@@ -58,7 +59,48 @@ export const useDraftMutations = (quizId: string) => {
     const reorderQuestions = useMutation({
         mutationFn: (questionIds: string[]) =>
             patchDraft(quizId, { operation: "reorder_questions", questionIds }),
-        onSuccess: invalidate,
+
+        onMutate: async (questionIds) => {
+            await queryClient.cancelQueries({
+                queryKey: draftKeys.latestByQuiz(quizId),
+            });
+
+            const previous = queryClient.getQueryData(
+                draftKeys.latestByQuiz(quizId)
+            );
+
+            queryClient.setQueryData(
+                draftKeys.latestByQuiz(quizId),
+                (old: { content: { questions: QuestionWithOptions[] } }) => {
+                    if (!old?.content?.questions) return old;
+
+                    const map = new Map(
+                        old.content.questions.map((q) => [q.id, q])
+                    );
+
+                    return {
+                        ...old,
+                        content: {
+                            ...old.content,
+                            questions: questionIds
+                                .map(id => map.get(id))
+                                .filter(Boolean),
+                        },
+                    };
+                }
+            );
+
+            return { previous };
+        },
+
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.previous) {
+                queryClient.setQueryData(
+                    draftKeys.latestByQuiz(quizId),
+                    ctx.previous
+                );
+            }
+        },
     });
 
     const replaceOptions = useMutation({

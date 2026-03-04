@@ -19,33 +19,17 @@ export const quizQueue = new Queue<QuizGenerationJobData>("quiz-generation", {
     },
 });
 
-// ─── Minion (Draft Improvement) ───────────────────────────────────────────────
+// ─── Minion ───────────────────────────────────────────────────────────────────
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
-
-interface MinionOption {
-    optionText: string;
-    isCorrect: boolean;
-}
 
 interface MinionQuestion {
     questionText: string;
     questionType: QuestionType;
-    options: MinionOption[];
+    options: { optionText: string; isCorrect: boolean }[];
 }
 
 export type MinionJobData =
-    | {
-        scope: "question_text";
-        quizId: string;
-        question: MinionQuestion;
-    }
-    | {
-        scope: "single_option";
-        quizId: string;
-        questionText: string;
-        option: MinionOption;
-    }
     | {
         scope: "change_type";
         quizId: string;
@@ -53,13 +37,26 @@ export type MinionJobData =
         newType: QuestionType;
     }
     | {
+        scope: "regenerate_question";
+        quizId: string;
+        question: MinionQuestion;
+    }
+    | {
         scope: "add_distractor";
         quizId: string;
-        question: {
-            questionText: string;
-            questionType: "single_choice" | "multiple_choice";
-            options: MinionOption[];
-        };
+        question: MinionQuestion;
+    }
+    | {
+        scope: "add_question";
+        quizId: string;
+        existingQuestions: { questionText: string }[];
+        questionType?: QuestionType;
+    }
+    | {
+        scope: "custom_instruction";
+        quizId: string;
+        question: MinionQuestion;
+        instruction: string;
     };
 
 export const minionQueue = new Queue<MinionJobData>("minion-improvement", {

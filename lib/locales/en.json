@@ -1,17 +1,14 @@
 {
   "app.name": "AI Quizzer",
-
   "nav.platform": "Platform",
   "nav.home": "Home",
   "nav.quizzes": "Quizzes",
   "nav.conversation": "Conversation",
-
-
+  "nav.editor": "Editor",
   "user.account": "Account",
   "user.profile": "Profile",
   "user.settings": "Settings",
   "user.signOut": "Sign out",
-
   "profile.title": "Profile",
   "profile.subtitle": "Manage your account settings",
   "profile.personalInfo": "Personal Information",
@@ -26,7 +23,6 @@
   "profile.currentPassword": "Current Password",
   "profile.newPassword": "New Password",
   "profile.updatePassword": "Update password",
-
   "quizzes.title": "Quizzes",
   "quizzes.new": "New Quiz",
   "quizzes.empty": "No quizzes yet",
@@ -34,7 +30,6 @@
   "quizzes.loading": "Loading quizzes…",
   "quizzes.error": "Something went wrong",
   "quizzes.errorHint": "We couldn’t load the quizzes. Please try again.",
-
   "quiz.passQuiz": "Pass the quiz",
   "quiz.edit": "Edit",
   "quiz.difficulty": "Difficulty",
@@ -46,7 +41,6 @@
   "quiz.topic": "Topic",
   "quiz.configuration": "Configuration",
   "quiz.versions": "Versions",
-
   "newQuiz.dialogTitle": "Create New Quiz",
   "newQuiz.quizTitle": "Quiz Title",
   "newQuiz.topic": "Topic (optional)",
@@ -62,7 +56,6 @@
   "newQuiz.uploading": "Uploading...",
   "newQuiz.create": "Create Quiz",
   "newQuiz.cancel": "Cancel",
-
   "step.0.pre": "Analyze Quiz Details",
   "step.0.loading": "Saving Quiz Details",
   "step.0.done": "Quiz Details Saved",
@@ -72,7 +65,6 @@
   "step.2.pre": "Generate Questions",
   "step.2.loading": "Generating Quiz Questions",
   "step.2.done": "Quiz Questions Generated",
-
   "take.selectLanguage": "Select your language",
   "take.start": "Start Quiz",
   "take.next": "Next",
@@ -84,29 +76,46 @@
   "take.keepPracticing": "Keep practicing.",
   "take.loadFailed": "Failed to load the quiz.",
   "take.question": "Question",
-
-  "chat.title":"Start a conversation",
-  "chat.description":"Type a message below to get started.",
-  "chat.placeholder":"Type a message…",
-
-  "editableQuestion.title":"Question {number}",
-  "editableQuestion.addDistractor":"Add a distractor",
-  "editableQuestion.addingDistractor":"Adding a distractor...",
-  "editableQuestion.options":"Options",
-
+  "chat.title": "Start a conversation",
+  "chat.description": "Type a message below to get started.",
+  "chat.placeholder": "Type a message…",
+  "editableQuestion.title": "Question {number}",
+  "editableQuestion.addDistractor": "Add a distractor",
+  "editableQuestion.addingDistractor": "Adding a distractor...",
+  "editableQuestion.options": "Options",
   "common.loading": "Loading...",
   "common.error": "Something went wrong.",
-
   "difficulty.easy": "Easy",
   "difficulty.medium": "Medium",
   "difficulty.hard": "Hard",
-
+  "questions.label": "Questions",
+  "question.label": "Question",
+  "question.number": "Question {number}",
+  "editor.generate": "New Question",
+  "editor.generating": "Generating question…",
+  "editor.regenerate": "Regenerate question",
+  "editor.noQuestionSelectedDescription": "Select a question from the list to edit",
+  "editor.changeWithAI": "Change with AI",
+  "editor.popoverTitle": "AI instruction",
+  "editor.popoverDescription": "Describe what to change about this question.",
+  "editor.popoverPlaceholder": "e.g. Make it harder, be precise, add more nuance…",
+  "editor.popoverSubmitKeyWindows": "Ctrl + Enter",
+  "editor.popoverSubmitKeyMac": "⌘ + Enter",
+  "editor.popoverSubmit": "Apply",
+  "editor.popoverSubmitting": "Applying...",
+  "editor.questionDoubleClick": "Double click to edit",
+  "editor.questionEdit": "Edit question",
+  "editor.save": "Save",
+  "editor.cancel": "Cancel",
+  "editor.optionMarkAsCorrect": "Mark as correct",
+  "editor.optionMarkAsIncorrect": "Mark as incorrect",
+  "editor.optionEdit": "Edit option",
+  "editor.distractorAdd": "Add distractor option",
+  "editor.distractorAdding": "Generating distractor…",
   "questionType.true_false": "True / False",
   "questionType.single_choice": "Single Choice",
   "questionType.multiple_choice": "Multiple Choice",
-
   "languages.label": "Languages",
-
   "status.queued": "Queued",
   "status.architecting": "Designing",
   "status.building": "Generating",

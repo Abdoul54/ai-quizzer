@@ -2,42 +2,29 @@ import { useMutation } from "@tanstack/react-query";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
-interface Option {
-    id: string;
-    optionText: string;
-    isCorrect: boolean;
-}
-
 interface Question {
     id: string;
     questionText: string;
     questionType: QuestionType;
-    options: Option[];
+    options: { id: string; optionText: string; isCorrect: boolean }[];
 }
 
-// ─── Return types per scope ───────────────────────────────────────────────────
-
-interface ImprovedQuestionText {
-    questionText: string;
-}
-
-interface ImprovedOption {
-    optionText: string;
-    isCorrect: boolean;
-}
-
-interface ChangedTypeResult {
+interface FullQuestionResult {
     questionText: string;
     questionType: QuestionType;
     options: { optionText: string; isCorrect: boolean }[];
 }
 
-interface AddedDistractor {
+interface NewQuestionResult {
+    questionText: string;
+    questionType: QuestionType;
+    options: { optionText: string; isCorrect: boolean }[];
+}
+
+interface DistractorResult {
     optionText: string;
     isCorrect: false;
 }
-
-// ─── Core async helper ────────────────────────────────────────────────────────
 
 async function enqueueAndAwait<T>(quizId: string, body: object): Promise<T> {
     const res = await fetch(`/api/quizzes/${quizId}/draft/improve`, {
@@ -57,11 +44,8 @@ async function enqueueAndAwait<T>(quizId: string, body: object): Promise<T> {
             es.close();
             try {
                 const payload = JSON.parse(event.data) as { ok: boolean; data?: T; error?: string };
-                if (payload.ok) {
-                    resolve(payload.data as T);
-                } else {
-                    reject(new Error(payload.error ?? "Improvement failed. Please try again."));
-                }
+                if (payload.ok) resolve(payload.data as T);
+                else reject(new Error(payload.error ?? "Improvement failed. Please try again."));
             } catch {
                 reject(new Error("Unexpected response from server."));
             }
@@ -74,28 +58,34 @@ async function enqueueAndAwait<T>(quizId: string, body: object): Promise<T> {
     });
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
 export const useImproveQuestion = (quizId: string) => {
-    const improveQuestionText = useMutation({
-        mutationFn: (question: Question) =>
-            enqueueAndAwait<ImprovedQuestionText>(quizId, { scope: "question_text", question }),
-    });
-
-    const improveOption = useMutation({
-        mutationFn: ({ questionText, option }: { questionText: string; option: Omit<Option, "id"> }) =>
-            enqueueAndAwait<ImprovedOption>(quizId, { scope: "single_option", questionText, option }),
-    });
-
     const changeType = useMutation({
         mutationFn: ({ question, newType }: { question: Question; newType: QuestionType }) =>
-            enqueueAndAwait<ChangedTypeResult>(quizId, { scope: "change_type", question, newType }),
+            enqueueAndAwait<FullQuestionResult>(quizId, { scope: "change_type", question, newType }),
+    });
+
+    const regenerateQuestion = useMutation({
+        mutationFn: (question: Question) =>
+            enqueueAndAwait<FullQuestionResult>(quizId, { scope: "regenerate_question", question }),
     });
 
     const addDistractor = useMutation({
         mutationFn: (question: Question) =>
-            enqueueAndAwait<AddedDistractor>(quizId, { scope: "add_distractor", question }),
+            enqueueAndAwait<DistractorResult>(quizId, { scope: "add_distractor", question }),
     });
 
-    return { improveQuestionText, improveOption, changeType, addDistractor };
+    const addQuestion = useMutation({
+        mutationFn: ({ existingQuestions, questionType }: {
+            existingQuestions: { questionText: string }[];
+            questionType?: QuestionType;
+        }) =>
+            enqueueAndAwait<NewQuestionResult>(quizId, { scope: "add_question", existingQuestions, questionType }),
+    });
+
+    const customInstruction = useMutation({
+        mutationFn: ({ question, instruction }: { question: Question; instruction: string }) =>
+            enqueueAndAwait<FullQuestionResult>(quizId, { scope: "custom_instruction", question, instruction }),
+    });
+
+    return { changeType, regenerateQuestion, addQuestion, addDistractor, customInstruction };
 };

@@ -66,7 +66,7 @@ async function publish(
     );
 }
 
-async function runJob(job: Job<QuizGenerationJobData>) {
+async function runAgents(job: Job<QuizGenerationJobData>) {
     const { quizId, input } = job.data;
     const log = workerLogger(job.id!, quizId);
 
@@ -137,15 +137,15 @@ async function runJob(job: Job<QuizGenerationJobData>) {
 
 async function processQuizGeneration(job: Job<QuizGenerationJobData>) {
     return Promise.race([
-        runJob(job),
+        runAgents(job),
         new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("timeout")), JOB_TIMEOUT_MS)
         ),
     ]);
 }
 
-export function startWorker() {
-    const workerLog = logger.child({ component: "worker" });
+export function startGeneration() {
+    const workerLog = logger.child({ component: "agents" });
 
     const worker = new Worker<QuizGenerationJobData>(
         "quiz-generation",
@@ -154,11 +154,11 @@ export function startWorker() {
     );
 
     worker.on("active", (job) => {
-        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Job active");
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Quiz Generation Active");
     });
 
     worker.on("completed", (job) => {
-        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Job completed");
+        workerLog.info({ jobId: job.id, quizId: job.data.quizId }, "Quiz Generation Completed");
     });
 
     worker.on("failed", (job, err) => {
@@ -170,10 +170,10 @@ export function startWorker() {
     });
 
     worker.on("error", (err) => {
-        workerLog.error({ err }, "Worker error");
+        workerLog.error({ err }, "Agents error");
     });
 
-    workerLog.info({ concurrency: CONCURRENCY }, "Worker started");
+    workerLog.info({ concurrency: CONCURRENCY }, "Agents started");
 
     return worker;
 }

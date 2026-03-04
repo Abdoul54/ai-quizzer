@@ -3,12 +3,12 @@ import express from "express";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
-import { startWorker } from "./quiz-generation.worker";
+import { startGeneration } from "./quiz-generation.worker";
 import { startMinionWorker } from "./minion.worker";
 import { quizQueue, minionQueue } from "@/lib/queue";
 import logger from "@/lib/logger";
 
-const worker = startWorker();
+const worker = startGeneration();
 const minionWorker = startMinionWorker();
 
 const app = express();

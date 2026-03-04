@@ -18,12 +18,17 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useUILanguage } from "@/providers/ui-language-provider"
-import { getLanguageLabel, languages } from "@/lib/languages"
+import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages"
+import { updateUser } from "@/lib/auth-client"
 
 export function Language() {
     const { isMobile } = useSidebar()
     const { t, lang } = useUILanguage()
 
+    const changeLanguage = async (lang: LanguageCode) => {
+        await updateUser({ language: lang });
+        window.location.reload();
+    };
 
     const language = getLanguageLabel(lang, lang)
 
@@ -62,7 +67,7 @@ export function Language() {
                                     <DropdownMenuItem
                                         key={language?.code}
                                         data-active={language?.code === lang}
-                                        onClick={() => console.log}
+                                        onClick={() => changeLanguage(language?.code)}
                                         className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground data-[active=true]:font-bold"
                                     >
                                         {getLanguageLabel(language?.code, lang)}

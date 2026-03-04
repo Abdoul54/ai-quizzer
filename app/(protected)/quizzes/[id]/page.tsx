@@ -78,12 +78,11 @@ const Page = () => {
                         {quiz?.title}
                     </h1>
                     <div className="flex gap-2">
-
                         <Button variant="outline" size="sm" onClick={() => router.push(`/quiz/${id}`)}>
                             <Play className="w-4 h-4 mr-2" />
                             {t('quiz.passQuiz')}
                         </Button>
-                        <Button size="sm" onClick={() => router.push(`/quizzes/${id}/conversation`)}>
+                        <Button size="sm" onClick={() => router.push(`/quizzes/${id}/editor`)}>
                             <Brain className="w-4 h-4 mr-2" />
                             {t('quiz.edit')}
                         </Button>
@@ -108,12 +107,6 @@ const Page = () => {
                             {t(difficulty)}
                         </Badge>
                     )}
-                    {/* {data?.language && (
-                        <Badge variant="outline" className="rounded bg-info/10 text-info border-info">
-                            <Globe className="w-3 h-3 mr-1" />
-                            {languages.find(l => l.code === data.language)?.labels.en}
-                        </Badge>
-                    )} */}
                 </div>
             </div>
             {/* Render quiz details here */}
@@ -181,7 +174,6 @@ const Page = () => {
                                 value={quiz.additionalPrompt}
                             />
                         )}
-
                     </CardContent>
                 </Card>
             </div>

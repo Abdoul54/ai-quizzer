@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { DirectionProvider } from "@/components/ui/direction";
@@ -12,14 +11,18 @@ import { headers } from "next/headers";
 import { getDirection } from "@/lib/languages";
 import type { LanguageCode } from "@/lib/languages";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin", "latin-ext"],
+import { Cairo, Jost } from "next/font/google";
+
+const jost = Jost({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-jost',
+  weight: ['400', '500', '600', '700'],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const cairo = Cairo({
+  subsets: ['latin', 'arabic'],
+  variable: '--font-noto',        // keep same variable, no CSS changes needed
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -47,9 +50,7 @@ export default async function RootLayout({
 
   return (
     <html lang={lang} dir={dir}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${cairo.variable} ${jost.variable} antialiased`}>
         <DirectionProvider dir={dir}>
           <GlobalGradientDefs />
           <QueryProvider>
