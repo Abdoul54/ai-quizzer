@@ -1,6 +1,6 @@
 import { generateText, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { searchDocs } from '@/lib/tools/search-docs';
+import { createSearchDocsTool } from '@/lib/tools/search-docs';
 import { getDocumentOverview } from '@/lib/tools/get-document-overview';
 import { agentLogger } from '@/lib/logger';
 import { trackUsage } from '@/lib/lib/track-usage';
@@ -14,7 +14,7 @@ interface QuizUserInput {
     questionTypes?: ('true_false' | 'single_choice' | 'multiple_choice')[];
     language?: string;
     additionalPrompt?: string;
-    quizId?: string; // optional — passed through from worker for log correlation
+    quizId?: string;
 }
 
 export const architect = async (input: QuizUserInput): Promise<string> => {
@@ -35,7 +35,7 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
         model: openai(process.env.ARCHITECT || 'gpt-4o-mini'),
         stopWhen: stepCountIs(8),
         toolChoice: hasDocuments ? 'auto' : 'none',
-        tools: hasDocuments ? { getDocumentOverview, searchDocs } : undefined,
+        tools: hasDocuments ? { getDocumentOverview, searchDocs: createSearchDocsTool(input.documents) } : undefined,
         onFinish: async ({ usage }) => {
             await trackUsage({
                 userId: input.userId,
@@ -126,7 +126,6 @@ Start by calling getDocumentOverview with:
 - Additional instructions: ${input.additionalPrompt ?? 'none'}`,
     });
 
-    // Log tool usage summary
     const toolCalls = result.steps.flatMap(s => s.toolCalls ?? []);
     const toolResults = result.steps.flatMap(s => s.toolResults ?? []);
     const retrievalFailed = toolResults.some(

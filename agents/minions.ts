@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output, stepCountIs } from "ai";
-import { searchDocs } from "@/lib/tools/search-docs";
+import { createSearchDocsTool } from "@/lib/tools/search-docs";
 import z from "zod";
 import { trackUsage } from "@/lib/lib/track-usage";
 
@@ -76,7 +76,7 @@ export const regenerateQuestionMinion = async (data: any) => {
     const { output } = await generateText({
         model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: fullQuestionSchema,
-        tools: hasDocuments ? { searchDocs } : undefined,
+        tools: hasDocuments ? { searchDocs: createSearchDocsTool(data.documentIds) } : undefined,
         stopWhen: stepCountIs(3),
         onFinish: async ({ usage }) => {
             await trackUsage({
@@ -105,8 +105,7 @@ ${hasDocuments ? "- Base the question ONLY on facts present in the retrieved sou
 
 Original question (do NOT rephrase or reuse): "${data.question.questionText}"
 Type: ${data.question.questionType}
-Original options (do NOT reuse): ${JSON.stringify(data.question.options)}
-${hasDocuments ? `\nDocumentIds to search: [${data.documentIds.join(", ")}]` : ""}`,
+Original options (do NOT reuse): ${JSON.stringify(data.question.options)}`,
     });
     return output;
 };
@@ -152,8 +151,13 @@ export const addQuestionMinion = async (data: any) => {
     const { output } = await generateText({
         model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: fullQuestionSchema,
-        tools: hasDocuments ? { searchDocs } : undefined,
-        stopWhen: stepCountIs(3),
+        tools: hasDocuments ? { searchDocs: createSearchDocsTool(data.documentIds) } : undefined,
+        stopWhen: stepCountIs(5),
+        prepareStep: ({ stepNumber }) => {
+            if (stepNumber >= 4) {
+                return { toolChoice: 'none' };
+            }
+        },
         onFinish: async ({ usage }) => {
             await trackUsage({
                 userId: data.userId,
@@ -168,7 +172,7 @@ export const addQuestionMinion = async (data: any) => {
 ${STRUCTURAL_RULES}
 
 ${hasDocuments ? `WORKFLOW:
-1. Call searchDocs with a query that targets a topic NOT yet covered by the existing questions. Use the documentIds from the prompt.
+1. Call searchDocs with a query that targets a topic NOT yet covered by the existing questions.
 2. Use the retrieved content to write a factually grounded question.
 
 ` : ""}STRICT RULES:
@@ -179,12 +183,10 @@ ${hasDocuments ? `WORKFLOW:
 ${hasDocuments ? "- Base the question ONLY on facts present in the retrieved source material." : ""}`,
         prompt: `Generate a new question for this quiz.
 
-Existing questions (do NOT duplicate):\n${existingQuestions || "None yet."}
-${hasDocuments ? `\nDocumentIds to search: [${data.documentIds.join(", ")}]` : ""}${data.questionType ? `\n\nPreferred type: ${data.questionType}` : ""}`,
+Existing questions (do NOT duplicate):\n${existingQuestions || "None yet."}${data.questionType ? `\n\nPreferred type: ${data.questionType}` : ""}`,
     });
     return output;
 };
-
 
 export const customInstructionMinion = async (data: any) => {
     const { output } = await generateText({

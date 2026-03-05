@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/db';
 import { draft } from '@/db/schema';
-import { searchDocs } from '@/lib/tools/search-docs';
+import { createSearchDocsTool } from '@/lib/tools/search-docs';
 import { agentLogger } from '@/lib/logger';
 import { trackUsage } from '@/lib/lib/track-usage';
 
@@ -30,6 +30,20 @@ interface BuilderInput {
 
 const MAX_ATTEMPTS = 3;
 
+const UNRECOVERABLE_PATTERNS = [
+    'invalid_api_key',
+    'insufficient_quota',
+    'rate_limit_exceeded',
+    'context_length_exceeded',
+    'content_policy_violation',
+];
+
+function isUnrecoverable(err: unknown): boolean {
+    if (!(err instanceof Error)) return false;
+    const msg = err.message.toLowerCase();
+    return UNRECOVERABLE_PATTERNS.some(p => msg.includes(p));
+}
+
 export const builder = async ({ quizId, architecture, documentIds, userId }: BuilderInput): Promise<string> => {
     let lastError: unknown;
     const hasDocuments = documentIds.length > 0;
@@ -52,8 +66,16 @@ export const builder = async ({ quizId, architecture, documentIds, userId }: Bui
             const { output } = await generateText({
                 model: openai(process.env.BUILDER || 'gpt-4o-mini'),
                 output: quizOutputSchema,
-                tools: hasDocuments ? { searchDocs } : undefined,
+                tools: hasDocuments ? { searchDocs: createSearchDocsTool(documentIds) } : undefined,
                 stopWhen: stepCountIs(8),
+                onStepFinish: ({ toolResults }) => {
+                    if (toolResults.length > 0 && toolResults.every(
+                        r => typeof r.output === 'string' && r.output.startsWith('RETRIEVAL_FAILED')
+                    )) {
+                        log.error({ quizId, attempt }, 'All searchDocs calls failed in step — aborting');
+                        throw new Error('RETRIEVAL_FAILED: All document searches returned no results. Ensure documents are uploaded and embeddings are generated.');
+                    }
+                },
                 onFinish: async ({ usage }) => {
                     await trackUsage({
                         userId: userId,
@@ -95,9 +117,7 @@ RULES:
 - For single_choice: 3–5 options, exactly one correct.
 - For multiple_choice: 3–5 options, 2 or more correct.
 - Write clear, unambiguous questions. No trick wording.`,
-                prompt: hasDocuments
-                    ? `Document IDs to search: ${documentIds.join(', ')}\n\nBuild the quiz questions from this architecture:\n\n${architecture}`
-                    : `Build the quiz questions from this architecture:\n\n${architecture}`,
+                prompt: `Build the quiz questions from this architecture:\n\n${architecture}`,
             });
 
             const questionCount = output.questions.length;
@@ -139,6 +159,12 @@ RULES:
 
         } catch (err) {
             lastError = err;
+
+            if (isUnrecoverable(err)) {
+                log.error({ err, attempt }, 'Builder encountered unrecoverable error — not retrying');
+                throw err;
+            }
+
             log.warn({
                 attempt,
                 maxAttempts: MAX_ATTEMPTS,
