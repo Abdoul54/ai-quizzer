@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, Output, stepCountIs } from "ai";
 import { searchDocs } from "@/lib/tools/search-docs";
 import z from "zod";
+import { trackUsage } from "@/lib/lib/track-usage";
 
 // ─── Shared schema ────────────────────────────────────────────────────────────
 
@@ -44,6 +45,16 @@ export const typeMinion = async (data: any) => {
     const { output } = await generateText({
         model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: fullQuestionSchema,
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: data.userId,
+                quizId: data.quizId,
+                source: "minion_change_type",
+                model: process.env.MINIONS || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: `You are an expert quiz editor. Convert a question to a new type, rewriting the question text and options so the question still makes sense and tests the same concept.${architectureContext(data.architecture)}
 ${STRUCTURAL_RULES}`,
         prompt: `Convert this question to type "${data.newType}".
@@ -67,6 +78,16 @@ export const regenerateQuestionMinion = async (data: any) => {
         output: fullQuestionSchema,
         tools: hasDocuments ? { searchDocs } : undefined,
         stopWhen: stepCountIs(3),
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: data.userId,
+                quizId: data.quizId,
+                source: "minion_regenerate",
+                model: process.env.MINIONS || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: `You are an expert quiz question writer. Your job is to write a brand new question on the same topic and at the same difficulty level as the original — but testing a DIFFERENT aspect, fact, or angle. The result must feel like a distinct question, not a rephrasing.${architectureContext(data.architecture)}
 ${STRUCTURAL_RULES}
 
@@ -97,6 +118,16 @@ export const distractorMinion = async (data: any) => {
     const { output } = await generateText({
         model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: addDistractorSchema,
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: data.userId,
+                quizId: data.quizId,
+                source: "minion_add_distractor",
+                model: process.env.MINIONS || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: `You are a quiz question editor. Generate one new distractor option for the given question. It must be plausible but clearly incorrect, and must not duplicate any existing option.${architectureContext(data.architecture)}`,
         prompt: `Question: "${data.question.questionText}"
 Existing options: ${data.question.options.map((o: any) => o.optionText).join(", ")}
@@ -123,6 +154,16 @@ export const addQuestionMinion = async (data: any) => {
         output: fullQuestionSchema,
         tools: hasDocuments ? { searchDocs } : undefined,
         stopWhen: stepCountIs(3),
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: data.userId,
+                quizId: data.quizId,
+                source: "minion_add_question",
+                model: process.env.MINIONS || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: `You are an expert quiz question writer. Generate a brand new question that fits naturally into the existing quiz.${architectureContext(data.architecture)}
 ${STRUCTURAL_RULES}
 
@@ -149,6 +190,16 @@ export const customInstructionMinion = async (data: any) => {
     const { output } = await generateText({
         model: openai(process.env.MINIONS || "gpt-4o-mini"),
         output: fullQuestionSchema,
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: data.userId,
+                quizId: data.quizId,
+                source: "minion_custom_instruction",
+                model: process.env.MINIONS || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: `You are an expert quiz editor. Apply the user's instruction to the question. Change only what the instruction asks for — keep everything else the same.${architectureContext(data.architecture)}
 ${STRUCTURAL_RULES}`,
         prompt: `Instruction: "${data.instruction}"

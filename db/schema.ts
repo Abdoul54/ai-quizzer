@@ -19,6 +19,16 @@ export const languageEnum = pgEnum("language", languageCodes);
 export const defaultLanguageEnum = pgEnum("language", languageCodes);
 export const questionTypeEnum = pgEnum("question_type", ["true_false", "single_choice", "multiple_choice"]);
 export const quizDifficultyEnum = pgEnum("quiz_difficulty", ["easy", "medium", "hard"]);
+export const usageSourceEnum = pgEnum("usage_source", [
+    "architect",
+    "builder",
+    "minion_change_type",
+    "minion_regenerate",
+    "minion_add_question",
+    "minion_add_distractor",
+    "minion_custom_instruction",
+]);
+
 export const quizStatusEnum = pgEnum("quiz_status", [
     "queued",
     "architecting",  // ← add
@@ -220,6 +230,24 @@ export const documentChunks = pgTable("document_chunks", {
     createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+export const usage = pgTable("usage", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    quizId: uuid("quiz_id")
+        .references(() => quiz.id, { onDelete: "set null" }),
+    source: usageSourceEnum("source").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+    index("usage_userId_idx").on(table.userId),
+    index("usage_quizId_idx").on(table.quizId),
+    index("usage_createdAt_idx").on(table.createdAt),
+]);
 // ─── Quiz Relations ───────────────────────────────────────────────────────────
 
 export const quizRelations = relations(quiz, ({ one, many }) => ({

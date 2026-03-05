@@ -72,6 +72,13 @@ async function runAgents(job: Job<QuizGenerationJobData>) {
 
     log.info({ documentCount: input.documentIds?.length ?? 0 }, "Job started");
 
+    const quizRecord = await db.query.quiz.findFirst({
+        where: eq(quiz.id, quizId),
+        columns: { userId: true },
+    });
+
+    const userId = quizRecord!.userId;
+
     try {
         // ── Step 1: Architect ────────────────────────────────────────────────
         await publish(quizId, "architecting");
@@ -83,6 +90,8 @@ async function runAgents(job: Job<QuizGenerationJobData>) {
         const architecture = await architect({
             documents: input.documentIds ?? [],
             topic: input.topic,
+            userId,
+            quizId,
             questionCount: input.questionCount ?? 10,
             difficulty: input.difficulty ?? "medium",
             questionTypes: input.questionTypes ?? ["true_false", "single_choice"],
@@ -104,6 +113,7 @@ async function runAgents(job: Job<QuizGenerationJobData>) {
 
         await builder({
             quizId,
+            userId,
             architecture,
             documentIds: input.documentIds ?? [],
         });

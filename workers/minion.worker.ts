@@ -59,8 +59,10 @@ async function runMinion(job: Job<MinionJobData>) {
 
     const quizRecord = await db.query.quiz.findFirst({
         where: eq(quiz.id, data.quizId),
-        columns: { architecture: true, documentIds: true },
+        columns: { architecture: true, documentIds: true, userId: true },  // ← add userId
     });
+
+    const userId = quizRecord?.userId ?? "";
     const architecture = quizRecord?.architecture ?? undefined;
     const documentIds: string[] = quizRecord?.documentIds ?? [];
 
@@ -70,31 +72,31 @@ async function runMinion(job: Job<MinionJobData>) {
 
         if (data.scope === "change_type") {
             log.debug({ newType: data.newType }, "Running change_type minion");
-            const output = await typeMinion({ ...data, architecture });
+            const output = await typeMinion({ ...data, architecture, userId });
             result = enforceStructure(output, data.newType);
         }
 
         if (data.scope === "regenerate_question") {
             log.debug("Running regenerate_question minion");
-            const output = await regenerateQuestionMinion({ ...data, architecture, documentIds });
+            const output = await regenerateQuestionMinion({ ...data, architecture, documentIds, userId });
             result = enforceStructure(output, data.question.questionType);
         }
 
         if (data.scope === "add_question") {
             log.debug("Running add_question minion");
-            const output = await addQuestionMinion({ ...data, architecture, documentIds });
+            const output = await addQuestionMinion({ ...data, architecture, documentIds, userId });
             result = enforceStructure(output, output.questionType);
         }
 
         if (data.scope === "add_distractor") {
             log.debug("Running add_distractor minion");
-            const output = await distractorMinion({ ...data, architecture });
+            const output = await distractorMinion({ ...data, architecture, userId });
             result = { optionText: output.optionText, isCorrect: false };
         }
 
         if (data.scope === "custom_instruction") {
             log.debug({ instruction: data.instruction }, "Running custom_instruction minion");
-            const output = await customInstructionMinion({ ...data, architecture });
+            const output = await customInstructionMinion({ ...data, architecture, userId });
             result = enforceStructure(output, data.question.questionType);
         }
 

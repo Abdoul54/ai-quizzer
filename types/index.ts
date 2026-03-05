@@ -9,6 +9,7 @@ import type {
     documents,
     documentChunks,
     draft,
+    usage,
 } from "@/db/schema";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -38,6 +39,10 @@ export type NewDocument = InferInsertModel<typeof documents>;
 
 export type DocumentChunk = InferSelectModel<typeof documentChunks>;
 export type NewDocumentChunk = InferInsertModel<typeof documentChunks>;
+
+export type UsageRecord = InferSelectModel<typeof usage>;
+export type NewUsageRecord = InferInsertModel<typeof usage>;
+
 
 
 export type Draft = InferSelectModel<typeof draft>;

@@ -3,9 +3,11 @@ import { openai } from '@ai-sdk/openai';
 import { searchDocs } from '@/lib/tools/search-docs';
 import { getDocumentOverview } from '@/lib/tools/get-document-overview';
 import { agentLogger } from '@/lib/logger';
+import { trackUsage } from '@/lib/lib/track-usage';
 
 interface QuizUserInput {
     documents: string[];
+    userId: string;
     topic?: string;
     questionCount?: number;
     difficulty?: 'easy' | 'medium' | 'hard';
@@ -34,6 +36,16 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
         stopWhen: stepCountIs(8),
         toolChoice: hasDocuments ? 'auto' : 'none',
         tools: hasDocuments ? { getDocumentOverview, searchDocs } : undefined,
+        onFinish: async ({ usage }) => {
+            await trackUsage({
+                userId: input.userId,
+                quizId: input.quizId,
+                source: "architect",
+                model: process.env.ARCHITECT || "gpt-4o-mini",
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+            });
+        },
         system: hasDocuments
             ? `You are an expert instructional designer and quiz architect.
 You have access to two tools:

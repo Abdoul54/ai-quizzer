@@ -6,6 +6,7 @@ import { db } from '@/db';
 import { draft } from '@/db/schema';
 import { searchDocs } from '@/lib/tools/search-docs';
 import { agentLogger } from '@/lib/logger';
+import { trackUsage } from '@/lib/lib/track-usage';
 
 const quizOutputSchema = Output.object({
     schema: z.object({
@@ -22,13 +23,14 @@ const quizOutputSchema = Output.object({
 
 interface BuilderInput {
     quizId: string;
+    userId: string;
     architecture: string;
     documentIds: string[];
 }
 
 const MAX_ATTEMPTS = 3;
 
-export const builder = async ({ quizId, architecture, documentIds }: BuilderInput): Promise<string> => {
+export const builder = async ({ quizId, architecture, documentIds, userId }: BuilderInput): Promise<string> => {
     let lastError: unknown;
     const hasDocuments = documentIds.length > 0;
     const log = agentLogger('builder', quizId);
@@ -51,13 +53,23 @@ export const builder = async ({ quizId, architecture, documentIds }: BuilderInpu
                 model: openai(process.env.BUILDER || 'gpt-4o-mini'),
                 output: quizOutputSchema,
                 tools: hasDocuments ? { searchDocs } : undefined,
-                stopWhen: stepCountIs(20),
+                stopWhen: stepCountIs(8),
+                onFinish: async ({ usage }) => {
+                    await trackUsage({
+                        userId: userId,
+                        quizId: quizId,
+                        source: "builder",
+                        model: process.env.BUILDER || "gpt-4o-mini",
+                        inputTokens: usage?.inputTokens,
+                        outputTokens: usage?.outputTokens,
+                    });
+                },
                 system: hasDocuments ? `You are a quiz question writer. Your only source of truth is the content returned by searchDocs.
 
 SEARCH STRATEGY:
-- Before writing any questions, call searchDocs 2–4 times with different queries to gather broad coverage of the document.
-- Then write all questions from the retrieved content in a single final step.
-- You have 20 steps total. Keep searches to the first few steps, then respond.
+- Call searchDocs 3–5 times with different queries to gather broad coverage of the documents.
+- You have 8 steps total. Use the first 5–6 steps for searches, then produce the output immediately. Do NOT call more than 6 tools.
+- After your searches are done, write all questions in a single final step.
 
 GROUNDING RULES — these are absolute:
 - Every correct answer must appear explicitly in a searchDocs result. Do not infer, extrapolate, or use general knowledge.
