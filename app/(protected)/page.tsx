@@ -1,15 +1,20 @@
 "use client";
 
+import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUsage } from "@/hooks/api/use-usage";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 export default function Chat() {
+  const { data } = useUsage()
+
+  console.log(data);
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+        {/* <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
           <Card className="@container/card animated-gradient">
             <CardHeader>
               <CardDescription>Total Revenue</CardDescription>
@@ -94,11 +99,10 @@ export default function Chat() {
               <div className="text-muted-foreground">Meets growth projections</div>
             </CardFooter>
           </Card>
-        </div>
+        </div> */}
 
-        <div className="grid grid-cols-6 gap-4">
-          <Card className="flex-1 h-64 col-span-4 "></Card>
-          <Card className="flex-1 h-64 col-span-2 "></Card>
+        <div className="grid gap-4">
+          <ChartAreaInteractive />
         </div>
       </div>
     </div>
