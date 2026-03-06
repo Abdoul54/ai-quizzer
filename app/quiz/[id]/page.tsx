@@ -9,6 +9,7 @@ import { useXApi } from "@/hooks/api/use-xapi";
 import { languages } from "@/lib/languages";
 import { useRef, useState } from "react";
 import { use } from "react";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,13 +159,13 @@ const QuizPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ answers }),
             });
-            if (!res.ok) throw new Error("Failed to submit quiz");
+            if (!res.ok) throw new Error("Failed to submit quiz. Please try again.");
             const data: GradingResponse = await res.json();
             setGrading(data);
             const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
             xapi.completed(data.score, data.total, durationSeconds);
         } catch (err) {
-            console.error(err);
+            toast.error(err instanceof Error ? err.message : "Failed to submit quiz. Please try again.");
         } finally {
             setSubmitting(false);
         }

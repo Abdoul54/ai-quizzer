@@ -38,12 +38,13 @@ import {
     Hammer,
     LucideIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import StepProgress from "../step-progress";
 import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { difficultyLevels, questionTypes } from "../cards/quiz-card";
 import { useUILanguage } from "@/providers/ui-language-provider";
+import { QUIZ_MAX_DOCUMENTS, UPLOAD_MAX_FILE_SIZE_BYTES, UPLOAD_MAX_FILE_SIZE_LABEL } from "@/lib/constants";
+import { toast } from "sonner";
 
 const filesIcons: Record<string, React.ReactElement> = {
     "application/pdf": <FileText className="h-4 w-4" />,
@@ -90,7 +91,6 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
 
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const router = useRouter();
 
     const [open, setOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -113,20 +113,42 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
     });
 
     async function handleUpload(selectedFile: File) {
+        if (documents.length >= QUIZ_MAX_DOCUMENTS) {
+            toast.error(`You can attach up to ${QUIZ_MAX_DOCUMENTS} documents per quiz.`);
+            return;
+        }
+
+        if (selectedFile.size > UPLOAD_MAX_FILE_SIZE_BYTES) {
+            toast.error(`File is too large. Maximum allowed size is ${UPLOAD_MAX_FILE_SIZE_LABEL}.`);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
         setUploading(true);
 
         const formData = new FormData();
         formData.append("file", selectedFile);
 
         const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const { id } = await res.json();
 
+        if (!res.ok) {
+
+            const { error } = await res.json().catch(() => ({ error: "Upload failed" }));
+            toast.error(error ?? "Upload failed");
+
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            setUploading(false);
+
+            return;
+        }
+
+        const { id } = await res.json();
         setDocuments((prev) => [...prev, { id, name: selectedFile.name, type: selectedFile.type }]);
 
         if (fileInputRef.current) fileInputRef.current.value = "";
-
         setUploading(false);
     }
+
 
     const onSubmit = (values: CreateQuizInput) => {
         setSubmitting(true);
@@ -144,7 +166,8 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
                     // Show all steps completed briefly before closing
                     setCurrentStep(steps.length);
                 },
-                onError: () => {
+                onError: (message) => {
+                    toast.error(message);
                     setSubmitting(false);
                 },
             }
@@ -378,12 +401,17 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
 
                             <Field>
                                 <div className="flex justify-between items-center gap-2">
-                                    <Label htmlFor="documents">{t("newQuiz.documents")}</Label>
+                                    <Label htmlFor="documents">
+                                        {t("newQuiz.documents")}
+                                        <span className="text-xs text-muted-foreground font-normal ml-1">
+                                            ({documents.length}/{QUIZ_MAX_DOCUMENTS})
+                                        </span>
+                                    </Label>
                                     <Button
                                         variant="outline"
                                         type="button"
                                         size="icon-sm"
-                                        disabled={uploading}
+                                        disabled={uploading || documents.length >= QUIZ_MAX_DOCUMENTS}
                                         onClick={() => fileInputRef.current?.click()}
                                     >
                                         {uploading ? (

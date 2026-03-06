@@ -6,6 +6,7 @@ import { extractText, isSupportedMimeType } from "@/lib/document-extractor";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { uploadLogger } from "@/lib/logger";
+import { UPLOAD_MAX_FILE_SIZE_BYTES, UPLOAD_MAX_FILE_SIZE_LABEL } from "@/lib/constants";
 
 export async function POST(req: Request) {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -32,6 +33,14 @@ export async function POST(req: Request) {
         let text: string = rawText || "";
 
         if (file) {
+            if (file.size > UPLOAD_MAX_FILE_SIZE_BYTES) {
+                log.warn({ fileName: file.name, fileSizeBytes: file.size }, "File exceeds size limit");
+                return Response.json(
+                    { error: `File is too large. Maximum allowed size is ${UPLOAD_MAX_FILE_SIZE_LABEL}.` },
+                    { status: 413 },
+                );
+            }
+
             if (!isSupportedMimeType(file.type)) {
                 log.warn({ fileName: file.name, fileType: file.type }, "Unsupported file type");
                 return Response.json({ error: `Unsupported file type: ${file.type}` }, { status: 400 });

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 import type { QuizWithRelations, Quiz, DraftWithQuestions } from "@/types";
 import type { CreateQuizInput, UpdateQuizInput } from "@/lib/validators";
+import { toast } from "sonner";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ export function useUpdateQuiz(id: string) {
             queryClient.invalidateQueries({ queryKey: quizKeys.all });
             queryClient.invalidateQueries({ queryKey: quizKeys.detail(id) });
         },
+        onError: (err: Error) => toast.error(err.message ?? "Failed to update quiz."),
     });
 }
 
@@ -160,6 +162,7 @@ export function useDeleteQuiz() {
             queryClient.invalidateQueries({ queryKey: quizKeys.all });
             queryClient.removeQueries({ queryKey: quizKeys.detail(id) });
         },
+        onError: (err: Error) => toast.error(err.message ?? "Failed to delete quiz."),
     });
 }
 

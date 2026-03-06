@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { quizKeys } from "./use-quiz";
+import { toast } from "sonner";
 
 export const useApproveQuiz = (quizId: string) => {
     const queryClient = useQueryClient();
@@ -15,5 +16,6 @@ export const useApproveQuiz = (quizId: string) => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: quizKeys.detail(quizId) });
         },
+        onError: (err: Error) => toast.error(err.message ?? "Failed to approve quiz."),
     });
 };

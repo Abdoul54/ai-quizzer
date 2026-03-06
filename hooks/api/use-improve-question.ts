@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 
@@ -58,20 +59,25 @@ async function enqueueAndAwait<T>(quizId: string, body: object): Promise<T> {
     });
 }
 
+const onError = (err: Error) => toast.error(err.message ?? "Something went wrong.");
+
 export const useImproveQuestion = (quizId: string) => {
     const changeType = useMutation({
         mutationFn: ({ question, newType }: { question: Question; newType: QuestionType }) =>
             enqueueAndAwait<FullQuestionResult>(quizId, { scope: "change_type", question, newType }),
+        onError,
     });
 
     const regenerateQuestion = useMutation({
         mutationFn: (question: Question) =>
             enqueueAndAwait<FullQuestionResult>(quizId, { scope: "regenerate_question", question }),
+        onError,
     });
 
     const addDistractor = useMutation({
         mutationFn: (question: Question) =>
             enqueueAndAwait<DistractorResult>(quizId, { scope: "add_distractor", question }),
+        onError,
     });
 
     const addQuestion = useMutation({
@@ -80,12 +86,14 @@ export const useImproveQuestion = (quizId: string) => {
             questionType?: QuestionType;
         }) =>
             enqueueAndAwait<NewQuestionResult>(quizId, { scope: "add_question", existingQuestions, questionType }),
+        onError,
     });
 
     const customInstruction = useMutation({
         mutationFn: ({ question, instruction }: { question: Question; instruction: string }) =>
             enqueueAndAwait<FullQuestionResult>(quizId, { scope: "custom_instruction", question, instruction }),
+        onError,
     });
 
-    return { changeType, regenerateQuestion, addQuestion, addDistractor, customInstruction };
+    return { changeType, regenerateQuestion, addDistractor, addQuestion, customInstruction };
 };
