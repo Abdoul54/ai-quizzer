@@ -26,6 +26,7 @@ interface BuilderInput {
     userId: string;
     architecture: string;
     documentIds: string[];
+    questionCount?: number;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -44,7 +45,7 @@ function isUnrecoverable(err: unknown): boolean {
     return UNRECOVERABLE_PATTERNS.some(p => msg.includes(p));
 }
 
-export const builder = async ({ quizId, architecture, documentIds, userId }: BuilderInput): Promise<string> => {
+export const builder = async ({ quizId, architecture, documentIds, userId, questionCount = 10 }: BuilderInput): Promise<string> => {
     let lastError: unknown;
     const hasDocuments = documentIds.length > 0;
     const log = agentLogger('builder', quizId);
@@ -52,6 +53,7 @@ export const builder = async ({ quizId, architecture, documentIds, userId }: Bui
     log.info({
         documentCount: documentIds.length,
         architectureLength: architecture.length,
+        questionCount,
         hasDocuments,
     }, 'Builder started');
 
@@ -63,11 +65,21 @@ export const builder = async ({ quizId, architecture, documentIds, userId }: Bui
                 log.warn({ attempt, maxAttempts: MAX_ATTEMPTS }, 'Builder retrying');
             }
 
+            const retryWarning = attempt > 1
+                ? `\n\nCRITICAL: Your previous attempt returned an empty questions array. You MUST return exactly ${questionCount} questions. An empty array is completely unacceptable — write the questions now.`
+                : '';
+
             const { output } = await generateText({
                 model: openai(process.env.BUILDER || 'gpt-4o-mini'),
                 output: quizOutputSchema,
                 tools: hasDocuments ? { searchDocs: createSearchDocsTool(documentIds) } : undefined,
-                stopWhen: stepCountIs(8),
+                stopWhen: stepCountIs(5),
+                prepareStep: ({ stepNumber }) => {
+                    // After 2 searches, force output — no more tool calls allowed
+                    if (stepNumber >= 2) {
+                        return { toolChoice: 'none' };
+                    }
+                },
                 onStepFinish: ({ toolResults }) => {
                     if (toolResults.length > 0 && toolResults.every(
                         r => typeof r.output === 'string' && r.output.startsWith('RETRIEVAL_FAILED')
@@ -86,12 +98,14 @@ export const builder = async ({ quizId, architecture, documentIds, userId }: Bui
                         outputTokens: usage?.outputTokens,
                     });
                 },
-                system: hasDocuments ? `You are a quiz question writer. Your only source of truth is the content returned by searchDocs.
+                system: hasDocuments
+                    ? `You are a quiz question writer. Your only source of truth is the content returned by searchDocs.
 
 SEARCH STRATEGY:
-- Call searchDocs 3–5 times with different queries to gather broad coverage of the documents.
-- You have 8 steps total. Use the first 5–6 steps for searches, then produce the output immediately. Do NOT call more than 6 tools.
-- After your searches are done, write all questions in a single final step.
+- You have 5 steps total. Steps 1–2 are for searching. Step 3 is for writing ALL questions.
+- Call searchDocs exactly 2 times, with different queries targeting different topics from the architecture.
+- After step 2, you MUST write all ${questionCount} questions immediately. Do NOT call any more tools.
+- Write all questions in a single step — do not split them.
 
 GROUNDING RULES — these are absolute:
 - Every correct answer must appear explicitly in a searchDocs result. Do not infer, extrapolate, or use general knowledge.
@@ -108,8 +122,7 @@ OTHER RULES:
 - Follow the architecture for question count, difficulty, language, and topic distribution.
 - Write clear, unambiguous questions. No trick wording.
 - Never invent proper nouns (names, places, values, dates) that were not returned by searchDocs.`
-                    : `You are a quiz question writer.
-You receive a quiz architecture written by an instructional designer and must produce the exact questions and answer options it specifies.
+                    : `You are a quiz question writer. Produce all ${questionCount} questions in a single response — do not split across steps.
 
 RULES:
 - Follow the architecture exactly: question count, types, difficulty, language, topic distribution.
@@ -117,10 +130,16 @@ RULES:
 - For single_choice: 3–5 options, exactly one correct.
 - For multiple_choice: 3–5 options, 2 or more correct.
 - Write clear, unambiguous questions. No trick wording.`,
-                prompt: `Build the quiz questions from this architecture:\n\n${architecture}`,
+                prompt: `Build the quiz questions from this architecture:\n\n${architecture}${retryWarning}`,
             });
 
-            const questionCount = output.questions.length;
+            // gpt-4o-mini can silently return an empty array — treat it as a retryable failure
+            if (!output || output.questions.length === 0) {
+                log.warn({ attempt }, 'Builder returned empty questions array');
+                throw new Error('Builder produced an empty questions array.');
+            }
+
+            const builtCount = output.questions.length;
             const typeCounts = output.questions.reduce<Record<string, number>>((acc, q) => {
                 acc[q.questionType] = (acc[q.questionType] ?? 0) + 1;
                 return acc;
@@ -129,7 +148,7 @@ RULES:
             log.debug({
                 attempt,
                 durationMs: Date.now() - attemptStart,
-                questionCount,
+                questionCount: builtCount,
                 typeCounts,
             }, 'Builder LLM call complete');
 
@@ -150,7 +169,7 @@ RULES:
             log.info({
                 attempt,
                 draftId: inserted.id,
-                questionCount,
+                questionCount: builtCount,
                 typeCounts,
                 durationMs: Date.now() - attemptStart,
             }, 'Builder completed — draft saved');

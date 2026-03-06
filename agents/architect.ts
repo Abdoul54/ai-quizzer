@@ -33,9 +33,18 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
 
     const result = await generateText({
         model: openai(process.env.ARCHITECT || 'gpt-4o-mini'),
-        stopWhen: stepCountIs(8),
+        // Step budget for gpt-4o-mini:
+        // With documents:    step 1 = getDocumentOverview, step 2 = write architecture (step 3 = buffer)
+        // Without documents: step 1 = write architecture
+        stopWhen: stepCountIs(3),
         toolChoice: hasDocuments ? 'auto' : 'none',
         tools: hasDocuments ? { getDocumentOverview, searchDocs: createSearchDocsTool(input.documents) } : undefined,
+        prepareStep: ({ stepNumber }) => {
+            // After the overview call, force text output — no more tool calls
+            if (stepNumber >= 1) {
+                return { toolChoice: 'none' };
+            }
+        },
         onFinish: async ({ usage }) => {
             await trackUsage({
                 userId: input.userId,
@@ -48,54 +57,42 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
         },
         system: hasDocuments
             ? `You are an expert instructional designer and quiz architect.
-You have access to two tools:
-- getDocumentOverview: fetches the first chunks of documents to understand their structure
-- searchDocs: semantically searches for specific concepts or topics
+You have access to one tool: getDocumentOverview, which fetches the first chunks of documents.
 
-WORKFLOW (follow this order strictly):
-1. Call getDocumentOverview FIRST with all documentIds and chunksPerDocument: 15.
-2. If the overview already contains enough content to build the architecture, skip searchDocs and write directly.
-3. Only call searchDocs if the overview is insufficient and you need deeper content on specific topics.
-4. Write the architecture based EXCLUSIVELY on what you retrieved.
+WORKFLOW (strict):
+1. Call getDocumentOverview ONCE with all documentIds and chunksPerDocument: 5.
+2. Write the architecture immediately based ONLY on what was returned. Do NOT call any more tools.
 
 STRICT RULES:
 - Only respond with "RETRIEVAL_FAILED: Could not retrieve document content." if getDocumentOverview returns empty or an error.
-- searchDocs returning empty results is acceptable if the overview already has sufficient content.
 - Do NOT generate architecture from general knowledge under any circumstances.
-- Do NOT assume document content. Only use what the tools return.
+- Do NOT assume document content. Only use what the tool returns.
 
-ARCHITECTURE DESIGN RULES — these directly affect quiz quality:
+OUTPUT FORMAT — keep it short and actionable:
+- Keep the architecture concise — 400 words maximum. The Builder reads this as its full context, so shorter is better.
+- Do NOT pre-write question text or dictate specific answer values.
+  Bad:  "Question 1: Which company has the highest rating? Answer: BioCore (4.8)"
+  Good: "Topic: Identify the top-rated company from the dataset"
+- For each topic, specify: the concept to test, the suggested question type, and brief distractor guidance.
 
-1. TOPIC AND INTENT ONLY — never pre-write question text or dictate specific answer values.
-   Bad:  "Question 1: Which company has the highest rating? Answer: BioCore (4.8)"
-   Good: "Topic: Identify the top-rated company from the dataset"
-   The Builder discovers the actual answer from the documents. Your job is to define what to test, not what the answer is.
-
-2. QUESTION TYPE ASSIGNMENT — assign types based on what the content structurally supports, not to fill a quota.
-   - Use multiple_choice ONLY when the topic has multiple correct answers that are structurally guaranteed
-     (e.g. "companies with Pending status" — you can see there are exactly 2 in the data).
-   - Do NOT assign multiple_choice to open-ended enumeration topics (e.g. "which countries are represented")
-     where the Builder may not be able to retrieve all correct answers in a single search. Use single_choice instead.
-   - Use true_false for binary facts that are unambiguously verifiable (e.g. "Company X has more employees than Company Y").
-   - If the requested type distribution cannot be satisfied by the content, adjust the types and note why.
-
-3. VERIFY BEFORE COMMITTING — before assigning a question type to a topic, ask yourself:
-   "Can the Builder find all correct answers for this with one or two searchDocs calls?"
-   If the answer is "maybe not", downgrade the type or choose a different topic.
-
-4. DISTRACTOR GUIDANCE — for each topic, note what plausible wrong answers exist in the data.
-   This helps the Builder write distractors grounded in the document rather than invented ones.
+QUESTION TYPE ASSIGNMENT:
+- Use multiple_choice ONLY when the topic has multiple correct answers that are structurally guaranteed in the data.
+- Use true_false for binary facts that are unambiguously verifiable.
+- When in doubt, use single_choice — it is always safer.
+- If the requested type distribution cannot be satisfied by the content, adjust and note why.
 
 The architecture must include:
-- Summary of key concepts and themes found in the documents
+- A brief summary of key concepts found in the documents (2–3 sentences)
 - Exact quiz parameters (question count, types, difficulty, language)
-- Topics and intent for each question (not pre-written questions or answers)
-- For each topic: suggested question type with justification based on the data
-- Common misconceptions or tricky areas worth testing
-- Distractor guidance per topic where relevant
-- Clear instructions the quiz builder must follow`
+- One entry per question: topic/intent, question type with justification, distractor hint
+- Any critical instructions the builder must follow`
             : `You are an expert instructional designer and quiz architect.
 No documents have been provided. Generate the architecture based solely on the quiz preferences.
+
+OUTPUT FORMAT — keep it short and actionable:
+- Keep the architecture concise — 400 words maximum.
+- Do NOT pre-write question text or answers.
+- For each topic: concept to test, suggested question type, brief distractor guidance.
 
 The architecture must include:
 - Summary of key concepts and themes relevant to the topic
@@ -116,7 +113,7 @@ Quiz preferences:
 
 Start by calling getDocumentOverview with:
 - documentIds: [${input.documents.map(id => `"${id}"`).join(', ')}]
-- chunksPerDocument: 15`
+- chunksPerDocument: 5`
             : `Generate a quiz architecture based on these preferences:
 - Topic focus: ${input.topic ?? 'general knowledge'}
 - Number of questions: ${input.questionCount ?? 10}
