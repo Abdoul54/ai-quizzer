@@ -12,7 +12,7 @@ const CONCURRENCY = Number(process.env.TRANSLATION_CONCURRENCY ?? 3);
 const JOB_TIMEOUT_MS = 5 * 60 * 1000;
 
 async function runTranslation(job: Job<TranslationJobData>) {
-    const { quizId, language } = job.data;
+    const { quizId, language, userId } = job.data;
     const log = workerLogger(job.id!, quizId);
 
     log.info({ quizId, language }, "Translation job started");
@@ -46,7 +46,7 @@ async function runTranslation(job: Job<TranslationJobData>) {
         })),
     }));
 
-    const result = await translator({ languages: [language], draft });
+    const result = await translator({ languages: [language], draft, quizId, userId });
 
     // Merge new translations into existing jsonb
     for (const q of publishedQuestions) {

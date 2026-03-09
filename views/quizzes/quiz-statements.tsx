@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useUILanguage } from "@/providers/ui-language-provider"
 import { useQuizStatements } from "@/hooks/api/use-xapi"
-import { SquareStack, CheckCircle2, XCircle, Timer, RotateCw } from "lucide-react"
+import { Timer, RotateCw, ScrollText, Scroll } from "lucide-react"
 import { Agent, Statement } from "@xapi/xapi"
 import { cn, getInitials, parseDuration } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 
 const PASSED_VERB = "http://adlnet.gov/expapi/verbs/passed"
 const FAILED_VERB = "http://adlnet.gov/expapi/verbs/failed"
@@ -30,7 +31,7 @@ const QuizStatements = ({ quizId }: { quizId: string }) => {
         <Card className="col-span-4 min-h-full h-full">
             <CardHeader>
                 <CardTitle className="flex gap-1.5 items-center">
-                    <SquareStack className="w-4 h-4" />
+                    <ScrollText className="w-4 h-4" />
                     {t("quiz.statements")}
                 </CardTitle>
                 <CardAction className="flex items-center gap-2">
@@ -45,7 +46,7 @@ const QuizStatements = ({ quizId }: { quizId: string }) => {
                 </CardAction>
             </CardHeader>
 
-            <CardContent className="flex flex-col gap-2 pt-0 max-h-[calc(100vh-325px)] overflow-y-auto">
+            <CardContent className="flex flex-col gap-2 pt-0 max-h-[calc(100vh-325px)] h-full overflow-y-auto">
                 {isLoading && (
                     <div className="flex flex-col gap-2">
                         {[...Array(3)].map((_, i) => (
@@ -55,9 +56,17 @@ const QuizStatements = ({ quizId }: { quizId: string }) => {
                 )}
 
                 {!isLoading && completions.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-4 text-center">
-                        No attempts yet.
-                    </p>
+                    <Empty className="border border-dashed h-sidebar">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <Scroll />
+                            </EmptyMedia>
+                            <EmptyTitle>No attempts yet</EmptyTitle>
+                            <EmptyDescription>
+                                Share the quiz so they can take it
+                            </EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 )}
 
                 {completions.map((s: Statement, i: number) => {

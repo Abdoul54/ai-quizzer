@@ -3,6 +3,7 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { openai } from '@ai-sdk/openai';
 import { agentLogger } from '@/lib/logger';
+import { trackUsage } from '@/lib/lib/track-usage';
 
 const translationItem = z.object({
     lang: z.string(),
@@ -28,12 +29,18 @@ const translatedQuizOutput = Output.object({
     }),
 });
 
+const CHUNK_SIZE = 5; // questions per parallel call
+
 export const translator = async ({
     languages,
     draft,
+    userId,
+    quizId
 }: {
     languages: string[];
     draft: any;
+    userId: string,
+    quizId: string
 }) => {
     const log = agentLogger('translator');
     const questionCount = draft?.length ?? 0;
@@ -43,10 +50,13 @@ export const translator = async ({
     const start = Date.now();
 
     try {
-        const { output } = await generateText({
-            model: openai(process.env.TRANSLATOR || 'gpt-4o-mini'),
-            output: translatedQuizOutput,
-            system: `
+        // Split draft into chunks
+        const chunks: any[][] = [];
+        for (let i = 0; i < draft.length; i += CHUNK_SIZE) {
+            chunks.push(draft.slice(i, i + CHUNK_SIZE));
+        }
+
+        const system = `
 You are a professional quiz translator.
 
 Return ONLY valid JSON matching the schema.
@@ -59,26 +69,48 @@ Rules:
 - Do not invent languages.
 - Do not skip any language.
 - Preserve correctness flags.
-`,
-            prompt: `
+`;
+
+        const chunkResults = await Promise.all(
+            chunks.map((chunk) =>
+                generateText({
+                    model: openai(process.env.TRANSLATOR || 'gpt-4o-mini'),
+                    output: translatedQuizOutput,
+                    system,
+                    onFinish: async ({ usage }) => {
+                        await trackUsage({
+                            userId: userId,
+                            quizId: quizId,
+                            source: "translator",
+                            model: process.env.TRANSLATOR || "gpt-4o-mini",
+                            inputTokens: usage?.inputTokens,
+                            outputTokens: usage?.outputTokens,
+                        });
+                    },
+                    prompt: `
 Target languages:
 ${languages.join(', ')}
 
 Translate this quiz draft into multilingual format.
 
 Draft:
-${JSON.stringify(draft, null, 2)}
+${JSON.stringify(chunk, null, 2)}
 `,
-        });
+                }).then(({ output }) => output?.questions ?? [])
+            )
+        );
+
+        const questions = chunkResults.flat();
 
         log.info({
             languages,
             questionCount,
-            translatedCount: output?.questions?.length ?? 0,
+            translatedCount: questions.length,
+            chunkCount: chunks.length,
             durationMs: Date.now() - start,
         }, 'Translator completed');
 
-        return output;
+        return { questions };
     } catch (err) {
         log.error({ languages, questionCount, err, durationMs: Date.now() - start }, 'Translator failed');
         throw err;

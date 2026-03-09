@@ -22,6 +22,7 @@ export const quizDifficultyEnum = pgEnum("quiz_difficulty", ["easy", "medium", "
 export const usageSourceEnum = pgEnum("usage_source", [
     "architect",
     "builder",
+    "translator",
     "minion_change_type",
     "minion_regenerate",
     "minion_add_question",

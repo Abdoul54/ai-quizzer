@@ -7,6 +7,7 @@ const log = logger.child({ component: "track-usage" });
 export type UsageSource =
     | "architect"
     | "builder"
+    | "translator"
     | "minion_change_type"
     | "minion_regenerate"
     | "minion_add_question"
