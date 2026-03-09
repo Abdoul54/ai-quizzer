@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         documentCount: documentIds?.length ?? 0,
         questionCount: questionCount ?? 10,
         difficulty: difficulty ?? "medium",
-        questionTypes,
+        questionTypes: questionTypes ?? ["true_false", "single_choice"],
         language: defaultLanguage,
     }, "Quiz creation requested");
 
@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
         .values({
             userId: session.user.id,
             ...parsed.data,
+            questionCount: questionCount ?? 10,
+            difficulty: difficulty ?? "medium",
+            questionTypes: questionTypes ?? ["true_false", "single_choice"],
             status: "queued",
         })
         .returning();

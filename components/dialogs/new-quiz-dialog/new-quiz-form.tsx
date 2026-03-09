@@ -123,7 +123,7 @@ const NewQuizForm = ({
                 </Field>
 
                 {/* Question Count */}
-                <Field {...(form.formState.errors.questionCount && { "data-invalid": true })}>
+                {/* <Field {...(form.formState.errors.questionCount && { "data-invalid": true })}>
                     <div className="flex items-center justify-between gap-2">
                         <Label htmlFor="questionCount">{t("newQuiz.questionCount")}</Label>
                         <span className="text-muted-foreground text-sm">
@@ -140,7 +140,7 @@ const NewQuizForm = ({
                     {form.formState.errors.questionCount && (
                         <FieldError>{form.formState.errors.questionCount.message}</FieldError>
                     )}
-                </Field>
+                </Field> */}
 
                 {/* Difficulty */}
                 <Field {...(form.formState.errors.difficulty && { "data-invalid": true })}>
@@ -266,7 +266,7 @@ const NewQuizForm = ({
                 </Field>
 
                 {/* Additional Languages */}
-                <Field {...(form.formState.errors.languages && { "data-invalid": true })}>
+                {/* <Field {...(form.formState.errors.languages && { "data-invalid": true })}>
                     <Label htmlFor="languages">{t("newQuiz.languages")}</Label>
                     <ToggleGroup
                         type="multiple"
@@ -310,7 +310,7 @@ const NewQuizForm = ({
                     {form.formState.errors.languages && (
                         <FieldError>{form.formState.errors.languages.message}</FieldError>
                     )}
-                </Field>
+                </Field> */}
 
                 {/* Additional Prompt */}
                 <Field {...(form.formState.errors.additionalPrompt && { "data-invalid": true })}>

@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { apiLogger } from "@/lib/logger";
+import { redis } from "@/lib/redis";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -35,7 +36,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    return NextResponse.json(found);
+    const translatingLanguages = await redis.smembers(`quiz:${id}:translating`);
+
+    return NextResponse.json({ ...found, translatingLanguages });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {

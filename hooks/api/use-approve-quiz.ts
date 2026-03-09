@@ -7,13 +7,12 @@ export const useApproveQuiz = (quizId: string) => {
 
     return useMutation({
         mutationFn: async () => {
-            const res = await fetch(`/api/quizzes/${quizId}/approve`, {
-                method: "POST",
-            });
+            const res = await fetch(`/api/quizzes/${quizId}/approve`, { method: "POST" });
             if (!res.ok) throw new Error(await res.text());
             return res.json();
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: quizKeys.all });
             queryClient.invalidateQueries({ queryKey: quizKeys.detail(quizId) });
         },
         onError: (err: Error) => toast.error(err.message ?? "Failed to approve quiz."),

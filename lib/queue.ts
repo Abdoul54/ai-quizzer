@@ -68,3 +68,22 @@ export const minionQueue = new Queue<MinionJobData>("minion-improvement", {
         removeOnFail: 200,
     },
 });
+
+
+// ─── Translation ──────────────────────────────────────────────────────────────
+
+export interface TranslationJobData {
+    quizId: string;
+    language: string;
+    userId: string;
+}
+
+export const translationQueue = new Queue<TranslationJobData>("translation", {
+    connection: redis,
+    defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: "exponential", delay: 5_000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+    },
+});

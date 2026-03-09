@@ -20,6 +20,7 @@ const STATUS_STEP: Record<QuizStatus, number> = {
     architecting: 1,
     building: 2,
     draft: 3,
+    translating: 3,
     published: 3,
     archived: 3,
     failed: -1,

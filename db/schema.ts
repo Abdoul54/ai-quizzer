@@ -31,9 +31,10 @@ export const usageSourceEnum = pgEnum("usage_source", [
 
 export const quizStatusEnum = pgEnum("quiz_status", [
     "queued",
-    "architecting",  // ← add
-    "building",      // ← add
+    "architecting",
+    "building",
     "draft",
+    "translating",
     "published",
     "archived",
     "failed"

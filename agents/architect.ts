@@ -23,7 +23,6 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
 
     log.info({
         documentCount: input.documents.length,
-        questionCount: input.questionCount ?? 10,
         difficulty: input.difficulty ?? 'medium',
         language: input.language ?? 'auto',
         hasDocuments,
@@ -57,6 +56,7 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
         },
         system: hasDocuments
             ? `You are an expert instructional designer and quiz architect.
+            Your output is consumed directly by a Builder agent — NOT shown to any human.
 You have access to one tool: getDocumentOverview, which fetches the first chunks of documents.
 
 WORKFLOW (strict):
@@ -69,6 +69,9 @@ STRICT RULES:
 - Do NOT assume document content. Only use what the tool returns.
 
 OUTPUT FORMAT — keep it short and actionable:
+- Write for a machine reader (the Builder agent), not a human. Be precise and structured.
+- The Builder will use this architecture as its ONLY instruction source — be explicit about question types, difficulty, and constraints.
+- Do NOT add pleasantries, summaries, or commentary outside the architecture spec.
 - Keep the architecture concise — 400 words maximum. The Builder reads this as its full context, so shorter is better.
 - Do NOT pre-write question text or dictate specific answer values.
   Bad:  "Question 1: Which company has the highest rating? Answer: BioCore (4.8)"
@@ -87,6 +90,7 @@ The architecture must include:
 - One entry per question: topic/intent, question type with justification, distractor hint
 - Any critical instructions the builder must follow`
             : `You are an expert instructional designer and quiz architect.
+Your output is consumed directly by a Builder agent — NOT shown to any human.
 No documents have been provided. Generate the architecture based solely on the quiz preferences.
 
 OUTPUT FORMAT — keep it short and actionable:
@@ -95,6 +99,9 @@ OUTPUT FORMAT — keep it short and actionable:
 - For each topic: concept to test, suggested question type, brief distractor guidance.
 
 The architecture must include:
+- Write for a machine reader (the Builder agent), not a human. Be precise and structured.
+- The Builder will use this architecture as its ONLY instruction source — be explicit about question types, difficulty, and constraints.
+- Do NOT add pleasantries, summaries, or commentary outside the architecture spec.
 - Summary of key concepts and themes relevant to the topic
 - Exact quiz parameters (question count, types, difficulty, language)
 - Topics and subtopics to cover with suggested question distribution
@@ -105,7 +112,7 @@ The architecture must include:
 
 Quiz preferences:
 - Topic focus: ${input.topic ?? 'derive from the document'}
-- Number of questions: ${input.questionCount ?? 10}
+- Number of questions: 10
 - Difficulty: ${input.difficulty ?? 'medium'}
 - Question types: ${input.questionTypes?.join(', ') ?? 'single_choice, true_false'}
 - Language: ${input.language ?? 'same as the document'}
@@ -116,7 +123,7 @@ Start by calling getDocumentOverview with:
 - chunksPerDocument: 5`
             : `Generate a quiz architecture based on these preferences:
 - Topic focus: ${input.topic ?? 'general knowledge'}
-- Number of questions: ${input.questionCount ?? 10}
+- Number of questions: 10
 - Difficulty: ${input.difficulty ?? 'medium'}
 - Question types: ${input.questionTypes?.join(', ') ?? 'single_choice, true_false'}
 - Language: ${input.language ?? 'English'}

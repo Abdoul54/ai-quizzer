@@ -1,4 +1,4 @@
-import XAPI, { GetStatementsParams, Statement } from "@xapi/xapi";
+import XAPI, { GetStatementsParams, Statement, StatementsResponse } from "@xapi/xapi";
 
 let _client: XAPI | null = null;
 
@@ -34,11 +34,14 @@ export const queryStatements = async (params: GetStatementsParams): Promise<Stat
 
     const all: Statement[] = [];
     let response = await client.getStatements(params);
-    all.push(...(response.data.statements as Statement[]));
+    let data = response.data as StatementsResponse;
 
-    while (response.data.more) {
-        response = await client.getMoreStatements({ more: response.data.more });
-        all.push(...(response.data.statements as Statement[]));
+    all.push(...(data.statements as Statement[]));
+
+    while (data.more) {
+        response = await client.getMoreStatements({ more: data.more });
+        data = response.data as StatementsResponse;
+        all.push(...(data.statements as Statement[]));
     }
 
     return all;

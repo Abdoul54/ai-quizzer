@@ -5,11 +5,13 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import { startGeneration } from "./quiz-generation.worker";
 import { startMinionWorker } from "./minion.worker";
-import { quizQueue, minionQueue } from "@/lib/queue";
+import { quizQueue, minionQueue, translationQueue } from "@/lib/queue";
 import logger from "@/lib/logger";
+import { startTranslationWorker } from "./translation.worker";
 
 const worker = startGeneration();
 const minionWorker = startMinionWorker();
+const translationWorker = startTranslationWorker();
 
 const app = express();
 
@@ -20,7 +22,7 @@ app.get("/", (_req, res) => res.status(200).send("ok"));
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/board");
 createBullBoard({
-    queues: [new BullMQAdapter(quizQueue), new BullMQAdapter(minionQueue)],
+    queues: [new BullMQAdapter(quizQueue), new BullMQAdapter(minionQueue), new BullMQAdapter(translationQueue)],
     serverAdapter,
 });
 app.use("/board", serverAdapter.getRouter());
@@ -34,7 +36,7 @@ async function shutdown(signal: string) {
     logger.info({ signal }, "Shutdown signal received, shutting down gracefully");
 
     await new Promise((r) => setTimeout(r, 2_000));
-    await Promise.all([worker.close(), minionWorker.close()]);
+    await Promise.all([worker.close(), minionWorker.close(), translationWorker.close()]);
     server.close();
 
     logger.info("Shutdown complete");

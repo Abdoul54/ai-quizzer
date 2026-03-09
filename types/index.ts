@@ -11,6 +11,7 @@ import type {
     draft,
     usage,
 } from "@/db/schema";
+import { LanguageCode } from "@/lib/languages";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ export type QuestionWithOptions = {
 export type QuizWithRelations = Quiz & {
     questions: QuestionWithOptions[];
     uploadedDocuments: Document[];
+    translatingLanguages?: LanguageCode[];
 };
 
 export type DraftWithQuestions = Draft & {

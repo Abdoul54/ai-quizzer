@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useUILanguage } from "@/providers/ui-language-provider"
 import { useQuizStatements } from "@/hooks/api/use-xapi"
 import { SquareStack, CheckCircle2, XCircle, Timer, RotateCw } from "lucide-react"
-import { Statement } from "@xapi/xapi"
+import { Agent, Statement } from "@xapi/xapi"
 import { cn, getInitials, parseDuration } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -62,8 +62,9 @@ const QuizStatements = ({ quizId }: { quizId: string }) => {
 
                 {completions.map((s: Statement, i: number) => {
                     const passed = s.verb.id === PASSED_VERB
-                    const name = s.actor.name ?? "Unknown"
-                    const email = s.actor.mbox?.replace("mailto:", "") ?? ""
+                    const actor = s.actor as Agent;
+                    const name = actor.name ?? "Unknown"
+                    const email = actor.mbox?.replace("mailto:", "") ?? "";
                     const score = s.result?.score?.raw
                     const total = s.result?.score?.max
                     const duration = parseDuration(s.result?.duration)

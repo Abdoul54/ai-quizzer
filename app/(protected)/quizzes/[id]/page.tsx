@@ -5,10 +5,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuShortcut, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Spinner } from "@/components/ui/spinner";
+import { useAddLanguage } from "@/hooks/api/use-add-language";
 import { useQuiz } from "@/hooks/api/use-quiz";
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs";
-import { getLanguageLabel, LanguageCode } from "@/lib/languages";
+import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
 import { useUILanguage } from "@/providers/ui-language-provider";
 import QuizStatements from "@/views/quizzes/quiz-statements";
 import {
@@ -20,7 +23,8 @@ import {
     Play,
     Settings2,
     Brain,
-    Languages
+    Languages,
+    Plus
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -57,6 +61,9 @@ const Page = () => {
     const userLang = lang
 
     const { data: quiz } = useQuiz(String(id))
+    const addLanguage = useAddLanguage(String(id));
+    const isQuizPublished = quiz?.status === "published"
+
 
     useSetBreadcrumbs([
         { label: t('nav.home'), href: "/" },
@@ -77,7 +84,7 @@ const Page = () => {
                         {quiz?.title}
                     </h1>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/quiz/${id}`)}>
+                        <Button variant="outline" size="sm" disabled={!isQuizPublished} onClick={() => router.push(`/quiz/${id}`)}>
                             <Play className="w-4 h-4 mr-2" />
                             {t('quiz.passQuiz')}
                         </Button>
@@ -150,11 +157,44 @@ const Page = () => {
                         {quiz?.languages && (
                             <MetaRow icon={Languages} label={t('quiz.languages')}>
                                 <div className="flex flex-wrap gap-2 mt-1">
-                                    {quiz.languages.map((lang: string, i: number) => (
+                                    {quiz.languages.map((language, i) => (
                                         <Badge key={i} variant="outline" className="text-xs rounded bg-info/10 text-info border-info">
-                                            {getLanguageLabel(lang as LanguageCode, userLang as LanguageCode)}
+                                            {quiz.translatingLanguages?.includes(language) && <Spinner />}
+                                            {getLanguageLabel(language as LanguageCode, userLang as LanguageCode)}
                                         </Badge>
                                     ))}
+                                    {
+                                        isQuizPublished && <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-accent/50 border-muted hover:bg-accent hover:border-foreground transition-colors cursor-pointer"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                </Badge>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-40" align="start">
+                                                <DropdownMenuGroup>
+                                                    <DropdownMenuLabel>Languages</DropdownMenuLabel>
+                                                    {
+                                                        languages?.filter(language => !quiz.languages?.includes(language.code))?.map(language => (
+                                                            <DropdownMenuItem
+                                                                key={language?.code}
+                                                                disabled={quiz?.languages?.includes(language.code) || addLanguage.variables === language.code && addLanguage.isPending}
+                                                                onClick={() => addLanguage.mutate(language.code)}
+                                                            >
+                                                                {addLanguage.isPending && addLanguage.variables === language.code
+                                                                    ? <Spinner />
+                                                                    : null
+                                                                }
+                                                                {getLanguageLabel(language?.code, lang)}
+                                                            </DropdownMenuItem>
+                                                        ))
+                                                    }
+                                                </DropdownMenuGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    }
                                 </div>
                             </MetaRow>
                         )}
