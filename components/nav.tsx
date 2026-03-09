@@ -11,7 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 export function Nav({
     nav,
@@ -25,6 +25,7 @@ export function Nav({
     }[]
     groupLabel?: string
 }) {
+    const pathname = usePathname()
     const router = useRouter()
 
     return (
@@ -33,9 +34,13 @@ export function Nav({
             <SidebarMenu>
                 {nav.map((item, idx) => (
                     <SidebarMenuItem key={idx}>
-                        <SidebarMenuButton tooltip={item.title} onClick={() => {
-                            router.push(item.url)
-                        }}>
+                        <SidebarMenuButton
+                            isActive={item.url === pathname}
+                            tooltip={item.title} onClick={() => {
+                                router.push(item.url)
+                            }}
+                            className="rounded-diagonal data-[active=true]:bg-secondary data-[active=true]:text-secondary-foreground"
+                        >
                             {item.icon && <item.icon />}
                             <span>{item.title}</span>
                         </SidebarMenuButton>

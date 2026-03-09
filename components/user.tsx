@@ -71,10 +71,10 @@ export function User() {
                 {isPending ? (
                     <SidebarMenuButton
                         size="lg"
-                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-diagonal"
                     >
-                        <Avatar className="h-8 w-8 bg-accent animate-pulse rounded-md">
-                            <AvatarFallback className="rounded-lg bg-primary">
+                        <Avatar className="h-8 w-8 bg-accent animate-pulse rounded-diagonal">
+                            <AvatarFallback className="rounded-diagonal bg-primary">
                                 <User2 className="size-4 stroke-primary-foreground" />
                             </AvatarFallback>
                         </Avatar>
@@ -84,11 +84,11 @@ export function User() {
                         <DropdownMenuTrigger asChild>
                             <SidebarMenuButton
                                 size="lg"
-                                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-diagonal"
                             >
-                                <Avatar className="h-8 w-8 rounded-lg">
+                                <Avatar className="h-8 w-8 rounded-diagonal">
                                     <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                                    <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground">
                                         <span>{initials ?? <User2 className="size-4" />}</span>
                                     </AvatarFallback>
                                 </Avatar>
@@ -96,20 +96,19 @@ export function User() {
                                     <span className="truncate font-medium">{data?.user?.name}</span>
                                     <span className="truncate text-xs text-muted-foreground">{data?.user?.email}</span>
                                 </div>
-                                <ChevronsUpDown className="ms-auto size-4" />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
-                            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-diagonal"
                             side={isMobile ? "bottom" : "right"}
                             align="end"
                             sideOffset={4}
                         >
                             <DropdownMenuLabel className="p-0 font-normal">
                                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                    <Avatar className="h-8 w-8 rounded-lg">
+                                    <Avatar className="h-8 w-8 rounded-diagonal">
                                         <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                        <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                                        <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground">
                                             <span>{initials ?? <User2 className="size-4" />}</span>
                                         </AvatarFallback>
                                     </Avatar>

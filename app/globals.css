@@ -29,6 +29,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -238,4 +239,13 @@
 
 .sparkle-animate {
   animation: sparkle 1.5s infinite ease-in-out;
+}
+
+@layer utilities {
+  .rounded-diagonal {
+    @apply rounded-lg rounded-tl-none rounded-br-none;
+  }
+  .reverse-rounded-diagonal {
+    @apply rounded-lg rounded-tr-none rounded-bl-none;
+  }
 }

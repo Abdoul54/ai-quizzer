@@ -41,6 +41,7 @@
   "quiz.topic": "Topic",
   "quiz.configuration": "Configuration",
   "quiz.versions": "Versions",
+  "quiz.statements": "Statements",
   "newQuiz.dialogTitle": "Create New Quiz",
   "newQuiz.quizTitle": "Quiz Title",
   "newQuiz.topic": "Topic (optional)",

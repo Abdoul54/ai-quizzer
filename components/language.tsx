@@ -39,10 +39,10 @@ export function Language() {
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-diagonal"
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarFallback className="rounded-lg">
+                            <Avatar className="h-8 w-8 rounded-diagonal">
+                                <AvatarFallback className="rounded-diagonal">
                                     <Globe className="size-4 stroke-primary" />
                                 </AvatarFallback>
                             </Avatar>
@@ -52,7 +52,7 @@ export function Language() {
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-diagonal"
                         side={isMobile ? "bottom" : "right"}
                         align="end"
                         sideOffset={4}

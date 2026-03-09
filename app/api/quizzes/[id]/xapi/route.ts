@@ -7,24 +7,28 @@ import {
     statementCompletedQuiz,
     statementSelectedOption,
 } from "@/lib/xapi/statements";
-
-// You need the actor — get it from the session
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { queryStatements } from "@/lib/xapi/client";
+
+const actorSchema = z.object({ name: z.string(), email: z.string() });
 
 const schema = z.discriminatedUnion("event", [
     z.object({
         event: z.literal("launched"),
+        actor: actorSchema,
         quiz: z.object({ id: z.string(), title: z.string() }),
     }),
     z.object({
         event: z.literal("selected"),
+        actor: actorSchema,
         quiz: z.object({ id: z.string(), title: z.string() }),
         question: z.object({ id: z.string(), text: z.string() }),
         response: z.string(),
     }),
     z.object({
         event: z.literal("answered"),
+        actor: actorSchema,
         quiz: z.object({ id: z.string(), title: z.string() }),
         question: z.object({ id: z.string(), text: z.string() }),
         response: z.string(),
@@ -32,6 +36,7 @@ const schema = z.discriminatedUnion("event", [
     }),
     z.object({
         event: z.literal("completed"),
+        actor: actorSchema,
         quiz: z.object({ id: z.string(), title: z.string() }),
         score: z.number(),
         total: z.number(),
@@ -43,21 +48,15 @@ export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const [{ id: quizId }, body] = await Promise.all([params, req.json()]);
+    void quizId;
 
-    const { id: quizId } = await params;
-    void quizId; // available if you need it for logging
-
-    const actor = { name: session.user.name!, email: session.user.email! };
-
-    const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
         return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const data = parsed.data;
+    const { actor, ...data } = parsed.data;
 
     switch (data.event) {
         case "launched":
@@ -75,4 +74,25 @@ export async function POST(
     }
 
     return NextResponse.json({ ok: true });
+}
+
+
+
+
+export async function GET(
+    _req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { id } = await params;
+    const activityId = `${process.env.NEXT_PUBLIC_APP_URL}/quiz/${id}`;
+
+    const statements = await queryStatements({
+        activity: activityId,
+        related_activities: true,
+    });
+
+    return NextResponse.json(statements);
 }

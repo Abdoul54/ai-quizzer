@@ -1,6 +1,6 @@
 'use client'
 
-import { difficultyLevels, questionType, questionTypes, statuses } from "@/components/cards/quiz-card";
+import { difficultyLevels, questionTypes, statuses } from "@/components/cards/quiz-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { useQuiz } from "@/hooks/api/use-quiz";
 import { useSetBreadcrumbs } from "@/hooks/use-set-breadcrumbs";
-import { useSession } from "@/lib/auth-client";
-import { getLanguageLabel, LanguageCode, languages } from "@/lib/languages";
+import { getLanguageLabel, LanguageCode } from "@/lib/languages";
 import { useUILanguage } from "@/providers/ui-language-provider";
+import QuizStatements from "@/views/quizzes/quiz-statements";
 import {
     BookOpen,
     Gauge,
@@ -19,7 +19,6 @@ import {
     MessageSquareQuote,
     Play,
     Settings2,
-    SquareStack,
     Brain,
     Languages
 } from "lucide-react";
@@ -38,8 +37,8 @@ const MetaRow = ({
 }) => (
     <Item variant="default" className="p-2">
         {Icon && <ItemMedia>
-            <Avatar className="size-10 rounded bg-info/10 text-info">
-                <AvatarFallback className="rounded bg-info/10 text-info"><Icon className="size-5" /></AvatarFallback>
+            <Avatar className="size-10 bg-info/10 text-info">
+                <AvatarFallback className="bg-info/10 text-info"><Icon className="size-5" /></AvatarFallback>
             </Avatar>
         </ItemMedia>}
         <ItemContent>
@@ -60,7 +59,7 @@ const Page = () => {
     const { data: quiz } = useQuiz(String(id))
 
     useSetBreadcrumbs([
-        { label:t('nav.home'), href: "/" },
+        { label: t('nav.home'), href: "/" },
         { label: t('nav.quizzes'), href: "/quizzes" },
         { label: quiz?.title || String(id) },
     ]);
@@ -111,14 +110,7 @@ const Page = () => {
             </div>
             {/* Render quiz details here */}
             <div className="grid grid-cols-6 gap-2 p-4">
-                <Card className="col-span-4">
-                    <CardHeader>
-                        <CardTitle className="flex gap-1 items-center">
-                            <SquareStack className="w-4 h-4 inline-block" />
-                            {t("quiz.versions")}
-                        </CardTitle>
-                    </CardHeader>
-                </Card>
+                <QuizStatements quizId={String(id)} />
                 {/* Configuration Sidebar */}
                 <Card className="col-span-2">
                     <CardHeader>

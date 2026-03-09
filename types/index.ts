@@ -98,3 +98,20 @@ export type UpdateQuizPayload = Partial<CreateQuizPayload>;
 
 export type QuestionType = "true_false" | "single_choice" | "multiple_choice";
 export type QuizDifficulty = "easy" | "medium" | "hard";
+
+
+
+export interface UserInfo { name: string; email: string }
+
+export interface GradeResult {
+    questionId: string;
+    isCorrect: boolean;
+    correctOptionIds: string[];
+    submittedOptionIds: string[];
+}
+
+export interface GradingResponse {
+    score: number;
+    total: number;
+    results: GradeResult[];
+}

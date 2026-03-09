@@ -17,3 +17,18 @@ export const getLabel = (idx: number) => {
 
   return `${letter}${idx - 25}`;
 };
+
+
+export const parseDuration = (iso?: string): string => {
+  if (!iso) return "—"
+  const seconds = parseInt(iso.replace("PT", "").replace("S", ""))
+  if (isNaN(seconds)) return "—"
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
+export const getInitials = (name?: string) => {
+  if (!name) return "?"
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+}
