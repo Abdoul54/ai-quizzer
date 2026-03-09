@@ -16,10 +16,12 @@ import { User } from "./user"
 import { Logo } from "./logo"
 import { useUILanguage } from "@/providers/ui-language-provider"
 import { Language } from "./language"
+import { useRouter } from "next/navigation"
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { t, dir } = useUILanguage();
+    const { push } = useRouter();
 
     const side = dir === 'rtl' ? 'right' : 'left'
 
@@ -36,7 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" className="rounded-diagonal">
+                        <SidebarMenuButton size="lg" className="rounded-diagonal" onClick={() => push('/')}>
                             <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-diagonal">
                                 <Logo className="w-5 h-5 stroke-white" />
                             </div>

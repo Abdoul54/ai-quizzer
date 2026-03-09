@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -21,6 +21,8 @@ import NewQuizDone from "./new-quiz-done";
 type Phase = "form" | "loading" | "done";
 
 const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
+    const closedEarlyRef = useRef(false);
+
     const { createQuiz } = useCreateQuiz();
     const { t } = useUILanguage();
     const { push } = useRouter();
@@ -53,7 +55,11 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
     }, [lang, form]);
 
     const handleOpenChange = (next: boolean) => {
+        if (!next && phase === "loading") {
+            closedEarlyRef.current = true;
+        }
         if (next) {
+            closedEarlyRef.current = false;
             setPhase("form");
             setCurrentStep(0);
             setQuizId(null);
@@ -81,9 +87,18 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
             {
                 onStep: (step) => setCurrentStep((prev) => Math.max(prev, step)),
                 onSuccess: (result) => {
-                    setCurrentStep(steps.length);
-                    setQuizId(result);
-                    setTimeout(() => setPhase("done"), 600);
+                    if (closedEarlyRef.current) {
+                        toast.success(t("newQuiz.doneTitle"), {
+                            action: {
+                                label: t("newQuiz.goToQuiz"),
+                                onClick: () => push(`/quizzes/${result}`),
+                            },
+                        });
+                    } else {
+                        setCurrentStep(steps.length);
+                        setQuizId(result);
+                        setTimeout(() => setPhase("done"), 600);
+                    }
                 },
                 onError: (message) => {
                     toast.error(message);
@@ -128,6 +143,7 @@ const NewQuizDialog = ({ lang }: { lang: LanguageCode }) => {
                         />
                     )}
                 </div>
+
             </DialogContent>
         </Dialog>
     );
