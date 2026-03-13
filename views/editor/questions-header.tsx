@@ -1,5 +1,6 @@
 'use client'
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CardAction, CardHeader, CardTitle } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
@@ -24,12 +25,12 @@ export const QuestionsHeader = ({ count, isLoading, isAdding, ordering, onAdd, o
     return (
         <CardHeader className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <CardTitle>{t("questions.label")}</CardTitle>
                 {!isLoading && count > 0 && (
-                    <span className="text-xs text-muted-foreground font-mono tabular-nums bg-muted px-1.5 py-0.5 rounded-md">
+                    <Badge variant="outline" className="text-xs font-black font-mono tabular-nums px-1.5 py-0.5">
                         {count}
-                    </span>
+                    </Badge>
                 )}
+                <CardTitle>{t("questions.label")}</CardTitle>
             </div>
             {ordering ? (
                 <CardAction className="flex gap-1">
