@@ -41,10 +41,12 @@ type EditingState =
 const QuestionPanel = ({
     quizId,
     question,
+    ordering,
     dir,
 }: {
     quizId: string
     question?: QuestionWithOptions & { index: number }
+    ordering?: boolean
     dir?: Direction
 }) => {
     const { t } = useUILanguage()
@@ -186,7 +188,7 @@ const QuestionPanel = ({
     const canAddOption = question?.questionType !== "true_false"
 
     return (
-        <Card className="flex-1 col-span-4 flex flex-col">
+        <Card className={cn("flex-1", ordering ? "hidden" : "col-span-4 flex flex-col")}>
             {/* Header */}
             <CardHeader className="shrink-0 border-b">
                 {question ? (

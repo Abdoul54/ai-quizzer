@@ -9,7 +9,7 @@ import { useUILanguage } from "@/providers/ui-language-provider"
 import { QuestionWithOptions } from "@/types"
 import QuestionPanel from "@/views/editor/question-panel"
 import QuestionsPanel from "@/views/editor/questions-panel"
-import { CheckCheck } from "lucide-react"
+import { CheckCheck, ListOrdered } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useMemo, useState } from "react"
 
@@ -32,6 +32,7 @@ const Page = () => {
     ]);
 
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [ordering, setOrdering] = useState<boolean>(false)
 
     const questions = useMemo<QuestionWithOptions[]>(
         () => (draft?.content?.questions ?? []) as QuestionWithOptions[],
@@ -52,24 +53,29 @@ const Page = () => {
                 <div className="text-xl line-clamp-1 font-semibold">
                     {quiz?.title}
                 </div>
-                <Button
-                    onClick={() => approveQuiz.mutate()}
-                    disabled={approveQuiz.isPending}
-                    className="gap-2"
-                >
-                    <CheckCheck className="w-4 h-4" />
-                    {approveQuiz.isPending ? "Approving..." : "Approve quiz"}
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={() => approveQuiz.mutate()}
+                        disabled={approveQuiz.isPending}
+                        className="gap-2"
+                    >
+                        <CheckCheck className="w-4 h-4" />
+                        {approveQuiz.isPending ? "Approving..." : "Approve quiz"}
+                    </Button>
+                </div>
             </div>
             <div className="grid grid-cols-5 flex-1 gap-2">
                 <QuestionsPanel
                     quizId={quizId}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
+                    ordering={ordering}
+                    setOrdering={setOrdering}
                 />
                 <QuestionPanel
                     quizId={quizId}
                     question={currentQuestion}
+                    ordering={ordering}
                     dir={getDirection(quiz?.defaultLanguage as LanguageCode)}
                 />
             </div>

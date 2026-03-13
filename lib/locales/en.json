@@ -112,6 +112,7 @@
   "editor.popoverSubmitting": "Applying...",
   "editor.questionDoubleClick": "Double click to edit",
   "editor.questionEdit": "Edit question",
+  "editor.order": "Change Order",
   "editor.save": "Save",
   "editor.cancel": "Cancel",
   "editor.optionMarkAsCorrect": "Mark as correct",
