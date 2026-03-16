@@ -130,5 +130,7 @@
   "status.draft": "Draft",
   "status.published": "Published",
   "status.archived": "Archived",
-  "status.failed": "Failed"
+  "status.failed": "Failed",
+  "quiz.approving": "Approving...",
+  "quiz.approve": "Approve"
 }

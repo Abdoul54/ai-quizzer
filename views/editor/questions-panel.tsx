@@ -32,10 +32,18 @@ const QuestionsPanel = ({
     const isAdding = addQuestion.isPending || persistQuestion.isPending
 
     const [localOrder, setLocalOrder] = useState<QuestionWithOptions[]>([])
+    const [orderingVisible, setOrderingVisible] = useState(false)
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (ordering) setLocalOrder(questions)
+        if (ordering) {
+            setLocalOrder(questions)
+            // Let the width expansion finish first, then fade the grid in
+            const t = setTimeout(() => setOrderingVisible(true), 200)
+            return () => clearTimeout(t)
+        } else {
+            setOrderingVisible(false)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordering])
 
     const handleAddQuestion = async () => {
@@ -59,20 +67,33 @@ const QuestionsPanel = ({
     }
 
     return (
-        <Card className={cn("flex-1", ordering ? "col-span-5" : "col-span-1")}>
+        <Card
+            className={cn(
+                "flex flex-col min-h-0 overflow-hidden",
+                "transition-[width] duration-300 ease-in-out",
+                ordering ? "w-full" : "w-96 shrink-0",
+            )}
+        >
             <QuestionsHeader
                 count={questions.length}
                 isLoading={isLoading}
                 isAdding={isAdding}
                 ordering={ordering}
                 onAdd={handleAddQuestion}
-                isSavingOrder={reorderQuestions.isPending}   // <-- add this
+                isSavingOrder={reorderQuestions.isPending}
                 onCancelOrdering={() => setOrdering(false)}
                 onConfirmOrdering={ordering ? handleConfirmOrdering : () => setOrdering(true)}
             />
-            <CardContent className="h-[calc(100vh-225px)] overflow-y-auto px-2 pb-2">
+            <CardContent className="flex-1 overflow-y-auto px-2 pb-2">
                 {ordering ? (
-                    <QuestionOrdering questions={localOrder} onReorder={setLocalOrder} />
+                    <div
+                        className={cn(
+                            "transition-opacity duration-200",
+                            orderingVisible ? "opacity-100" : "opacity-0",
+                        )}
+                    >
+                        <QuestionOrdering questions={localOrder} onReorder={setLocalOrder} />
+                    </div>
                 ) : (
                     <QuestionList
                         questions={questions}

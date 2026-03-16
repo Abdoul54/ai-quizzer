@@ -63,7 +63,7 @@ export function User() {
         .map(word => word[0])
         .slice(0, 2)
         .join('')
-        .toUpperCase() || '';
+        .toUpperCase() || null;
 
     return (
         <SidebarMenu>
@@ -88,8 +88,8 @@ export function User() {
                             >
                                 <Avatar className="h-8 w-8 rounded-diagonal">
                                     <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                    <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground">
-                                        <span>{initials ?? <User2 className="size-4" />}</span>
+                                    <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground" suppressHydrationWarning>
+                                        {initials ?? <User2 className="size-4" />}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -108,8 +108,8 @@ export function User() {
                                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                     <Avatar className="h-8 w-8 rounded-diagonal">
                                         <AvatarImage src={data?.user?.image || ""} alt={data?.user?.name} />
-                                        <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground">
-                                            <span>{initials ?? <User2 className="size-4" />}</span>
+                                        <AvatarFallback className="rounded-diagonal bg-primary text-primary-foreground" suppressHydrationWarning>
+                                            {initials ?? <User2 className="size-4" />}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">

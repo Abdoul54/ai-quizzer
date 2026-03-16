@@ -9,7 +9,7 @@ import { useUILanguage } from "@/providers/ui-language-provider"
 import { QuestionWithOptions } from "@/types"
 import QuestionPanel from "@/views/editor/question-panel"
 import QuestionsPanel from "@/views/editor/questions-panel"
-import { CheckCheck, ListOrdered } from "lucide-react"
+import { CheckCheck } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useMemo, useState } from "react"
 
@@ -17,19 +17,17 @@ const Page = () => {
     const { id } = useParams()
     const quizId = String(id)
 
-
     const { t } = useUILanguage()
     const { data: quiz } = useQuiz(quizId)
     const { data: draft } = useLatestDraft(quizId)
-    const approveQuiz = useApproveQuiz(quizId);
-
+    const approveQuiz = useApproveQuiz(quizId)
 
     useSetBreadcrumbs([
         { label: t('nav.home'), href: "/" },
         { label: t('nav.quizzes'), href: "/quizzes" },
         { label: quiz?.title || String(id), href: `/quizzes/${id}` },
         { label: t('nav.editor') },
-    ]);
+    ])
 
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [ordering, setOrdering] = useState<boolean>(false)
@@ -39,7 +37,6 @@ const Page = () => {
         [draft]
     )
 
-    // Derived from live draft — always fresh after any mutation
     const currentQuestion = useMemo(() => {
         if (!selectedId) return undefined
         const index = questions.findIndex((q) => q.id === selectedId)
@@ -60,11 +57,13 @@ const Page = () => {
                         className="gap-2"
                     >
                         <CheckCheck className="w-4 h-4" />
-                        {approveQuiz.isPending ? "Approving..." : "Approve quiz"}
+                        {approveQuiz.isPending ? t('quiz.approving') : t('quiz.approve')}
                     </Button>
                 </div>
             </div>
-            <div className="grid grid-cols-5 flex-1 gap-2">
+
+            {/* Flex container instead of grid — width transitions work here */}
+            <div className="flex flex-1 gap-2 min-h-0">
                 <QuestionsPanel
                     quizId={quizId}
                     selectedId={selectedId}
