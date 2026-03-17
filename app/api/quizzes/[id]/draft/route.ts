@@ -15,6 +15,7 @@ const optionSchema = z.object({
     isCorrect: z.boolean(),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const questionSchema = z.object({
     id: z.string(),
     questionText: z.string(),
@@ -159,6 +160,7 @@ export async function PATCH(
                 id: uuidv4(),
                 ...op.question,
                 options: op.question.options.map(o => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const { id: _id, ...rest } = o as z.infer<typeof optionSchema>;
                     return { id: uuidv4(), ...rest };
                 }),

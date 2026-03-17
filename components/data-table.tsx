@@ -212,6 +212,7 @@ export function DataTable<TData extends WithId>({
         [data]
     )
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const table = useReactTable({
         data,
         columns,

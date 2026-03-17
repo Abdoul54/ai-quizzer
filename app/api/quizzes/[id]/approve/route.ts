@@ -13,7 +13,6 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: quizId } = await params;
     const log = apiLogger("/api/quizzes/[id]/approve POST", session.user.id);

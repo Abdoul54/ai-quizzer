@@ -3,7 +3,6 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Item, ItemHeader } from "@/components/ui/item";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Loader2, Send } from "lucide-react";

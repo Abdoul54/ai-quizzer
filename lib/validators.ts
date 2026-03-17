@@ -17,6 +17,7 @@ export const createQuizSchema = z.object({
     questionCount: z.number().int().min(1).max(100).optional(),
     difficulty: quizDifficultySchema.optional(),
     questionTypes: z.array(questionTypeSchema).optional(),
+    lrsConfigId: z.string().uuid().nullable().optional(),
     defaultLanguage: languageSchema.optional(),
     languages: z.array(languageSchema).optional(),
     additionalPrompt: z.string().max(2000).optional(),

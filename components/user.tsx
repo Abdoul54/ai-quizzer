@@ -1,7 +1,6 @@
 "use client"
 
 import {
-    ChevronsUpDown,
     LogOut,
     Settings,
     User2,

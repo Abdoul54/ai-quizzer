@@ -1,6 +1,7 @@
 /* globals.css */
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@plugin 'tailwind-scrollbar';
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -245,6 +246,7 @@
   .rounded-diagonal {
     @apply rounded-lg rounded-tl-none rounded-br-none;
   }
+
   .reverse-rounded-diagonal {
     @apply rounded-lg rounded-tr-none rounded-bl-none;
   }
