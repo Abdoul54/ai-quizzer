@@ -15,6 +15,7 @@
     "translation": "../../check-translations.sh lib/locales/"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
     "@ai-sdk/mistral": "^3.0.20",
     "@ai-sdk/openai": "^3.0.29",
     "@ai-sdk/react": "^3.0.91",

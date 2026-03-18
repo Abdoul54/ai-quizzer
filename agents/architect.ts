@@ -1,9 +1,9 @@
-import { generateText, stepCountIs } from 'ai';
+import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { createSearchDocsTool } from '@/lib/tools/search-docs';
 import { getDocumentOverview } from '@/lib/tools/get-document-overview';
 import { agentLogger } from '@/lib/logger';
 import { trackUsage } from '@/lib/lib/track-usage';
+import { architectSystemPrompt, buildArchitectPrompt } from '@/agents/prompts/architect';
 
 interface QuizUserInput {
     documents: string[];
@@ -17,8 +17,14 @@ interface QuizUserInput {
     quizId?: string;
 }
 
-export const architect = async (input: QuizUserInput): Promise<string> => {
+export interface ArchitectOutput {
+    architecture: string;
+    searchQueries: string[];
+}
+
+export const architect = async (input: QuizUserInput): Promise<ArchitectOutput> => {
     const hasDocuments = input.documents.length > 0;
+    const questionCount = input.questionCount ?? 10;
     const log = agentLogger('architect', input.quizId);
 
     log.info({
@@ -32,14 +38,15 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
 
     const result = await generateText({
         model: openai(process.env.ARCHITECT || 'gpt-4o-mini'),
-        // Step budget for gpt-4o-mini:
-        // With documents:    step 1 = getDocumentOverview, step 2 = write architecture (step 3 = buffer)
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+        maxRetries: 3,
+        timeout: { totalMs: 60000, stepMs: 20000 },
+        // With documents:    step 1 = getDocumentOverview, step 2 = write architecture
         // Without documents: step 1 = write architecture
-        stopWhen: stepCountIs(3),
-        toolChoice: hasDocuments ? 'auto' : 'none',
-        tools: hasDocuments ? { getDocumentOverview, searchDocs: createSearchDocsTool(input.documents) } : undefined,
+        toolChoice: hasDocuments ? 'required' : 'none',
+        tools: hasDocuments ? { getDocumentOverview } : undefined,
         prepareStep: ({ stepNumber }) => {
-            // After the overview call, force text output — no more tool calls
             if (stepNumber >= 1) {
                 return { toolChoice: 'none' };
             }
@@ -54,83 +61,18 @@ export const architect = async (input: QuizUserInput): Promise<string> => {
                 outputTokens: usage?.outputTokens,
             });
         },
-        system: hasDocuments
-            ? `You are an expert instructional designer and quiz architect.
-            Your output is consumed directly by a Builder agent — NOT shown to any human.
-You have access to one tool: getDocumentOverview, which fetches the first chunks of documents.
-
-WORKFLOW (strict):
-1. Call getDocumentOverview ONCE with all documentIds and chunksPerDocument: 5.
-2. Write the architecture immediately based ONLY on what was returned. Do NOT call any more tools.
-
-STRICT RULES:
-- Only respond with "RETRIEVAL_FAILED: Could not retrieve document content." if getDocumentOverview returns empty or an error.
-- Do NOT generate architecture from general knowledge under any circumstances.
-- Do NOT assume document content. Only use what the tool returns.
-
-OUTPUT FORMAT — keep it short and actionable:
-- Write for a machine reader (the Builder agent), not a human. Be precise and structured.
-- The Builder will use this architecture as its ONLY instruction source — be explicit about question types, difficulty, and constraints.
-- Do NOT add pleasantries, summaries, or commentary outside the architecture spec.
-- Keep the architecture concise — 400 words maximum. The Builder reads this as its full context, so shorter is better.
-- Do NOT pre-write question text or dictate specific answer values.
-  Bad:  "Question 1: Which company has the highest rating? Answer: BioCore (4.8)"
-  Good: "Topic: Identify the top-rated company from the dataset"
-- For each topic, specify: the concept to test, the suggested question type, and brief distractor guidance.
-
-QUESTION TYPE ASSIGNMENT:
-- Use multiple_choice ONLY when the topic has multiple correct answers that are structurally guaranteed in the data.
-- Use true_false for binary facts that are unambiguously verifiable.
-- When in doubt, use single_choice — it is always safer.
-- If the requested type distribution cannot be satisfied by the content, adjust and note why.
-
-The architecture must include:
-- A brief summary of key concepts found in the documents (2–3 sentences)
-- Exact quiz parameters (question count, types, difficulty, language)
-- One entry per question: topic/intent, question type with justification, distractor hint
-- Any critical instructions the builder must follow`
-            : `You are an expert instructional designer and quiz architect.
-Your output is consumed directly by a Builder agent — NOT shown to any human.
-No documents have been provided. Generate the architecture based solely on the quiz preferences.
-
-OUTPUT FORMAT — keep it short and actionable:
-- Keep the architecture concise — 400 words maximum.
-- Do NOT pre-write question text or answers.
-- For each topic: concept to test, suggested question type, brief distractor guidance.
-
-The architecture must include:
-- Write for a machine reader (the Builder agent), not a human. Be precise and structured.
-- The Builder will use this architecture as its ONLY instruction source — be explicit about question types, difficulty, and constraints.
-- Do NOT add pleasantries, summaries, or commentary outside the architecture spec.
-- Summary of key concepts and themes relevant to the topic
-- Exact quiz parameters (question count, types, difficulty, language)
-- Topics and subtopics to cover with suggested question distribution
-- Common misconceptions or tricky areas worth testing
-- Clear instructions the quiz builder must follow`,
-        prompt: hasDocuments
-            ? `Generate a quiz architecture for the following document IDs: ${input.documents.join(', ')}
-
-Quiz preferences:
-- Topic focus: ${input.topic ?? 'derive from the document'}
-- Number of questions: 10
-- Difficulty: ${input.difficulty ?? 'medium'}
-- Question types: ${input.questionTypes?.join(', ') ?? 'single_choice, true_false'}
-- Language: ${input.language ?? 'same as the document'}
-- Additional instructions: ${input.additionalPrompt ?? 'none'}
-
-Start by calling getDocumentOverview with:
-- documentIds: [${input.documents.map(id => `"${id}"`).join(', ')}]
-- chunksPerDocument: 5`
-            : `Generate a quiz architecture based on these preferences:
-- Topic focus: ${input.topic ?? 'general knowledge'}
-- Number of questions: 10
-- Difficulty: ${input.difficulty ?? 'medium'}
-- Question types: ${input.questionTypes?.join(', ') ?? 'single_choice, true_false'}
-- Language: ${input.language ?? 'English'}
-- Additional instructions: ${input.additionalPrompt ?? 'none'}`,
+        system: hasDocuments ? architectSystemPrompt.withDocuments : architectSystemPrompt.withoutDocuments,
+        prompt: buildArchitectPrompt({
+            documentIds: input.documents,
+            topic: input.topic,
+            questionCount,
+            difficulty: input.difficulty ?? 'medium',
+            questionTypes: input.questionTypes ?? ['single_choice', 'true_false'],
+            language: input.language ?? (hasDocuments ? 'same as the document' : 'English'),
+            additionalPrompt: input.additionalPrompt,
+        }),
     });
 
-    const toolCalls = result.steps.flatMap(s => s.toolCalls ?? []);
     const toolResults = result.steps.flatMap(s => s.toolResults ?? []);
     const retrievalFailed = toolResults.some(
         r => typeof r.output === 'string' && r.output.startsWith('RETRIEVAL_FAILED')
@@ -138,16 +80,11 @@ Start by calling getDocumentOverview with:
 
     log.debug({
         steps: result.steps.length,
-        toolCallCount: toolCalls.length,
-        toolsUsed: [...new Set(toolCalls.map(t => t.toolName))],
+        toolCallCount: result.steps.flatMap(s => s.toolCalls ?? []).length,
         retrievalFailed,
         outputTokens: result.usage?.outputTokens,
         inputTokens: result.usage?.inputTokens,
     }, 'Architect LLM call complete');
-
-    if (retrievalFailed) {
-        log.warn({ toolResults: toolResults.map(r => r.output) }, 'One or more retrieval calls failed');
-    }
 
     const architecture =
         result.text ||
@@ -164,7 +101,41 @@ Start by calling getDocumentOverview with:
         throw new Error('Architect failed to retrieve document content. Ensure documents are uploaded and embeddings are generated.');
     }
 
-    log.info({ durationMs: Date.now() - start, architectureLength: architecture.length }, 'Architect completed');
+    const searchQueries = extractSearchQueries(architecture, questionCount);
 
-    return architecture;
+    log.info({
+        durationMs: Date.now() - start,
+        architectureLength: architecture.length,
+        searchQueryCount: searchQueries.length,
+    }, 'Architect completed');
+
+    return { architecture, searchQueries };
 };
+
+function extractSearchQueries(architecture: string, questionCount: number): string[] {
+    const queries: string[] = [];
+    const regex = /Search Query:\s*(.+)/gi;
+    let match;
+
+    while ((match = regex.exec(architecture)) !== null) {
+        const query = match[1].trim();
+        if (query) queries.push(query);
+    }
+
+    // Fallback: if parsing fails, extract from Topic lines
+    if (queries.length === 0) {
+        const topicRegex = /Topic(?:\/Intent)?:\s*(.+)/gi;
+        while ((match = topicRegex.exec(architecture)) !== null) {
+            const topic = match[1].trim();
+            if (topic) queries.push(topic);
+        }
+    }
+
+    // Ensure we have exactly questionCount queries — pad or trim
+    if (queries.length < questionCount) {
+        const last = queries[queries.length - 1] ?? 'general content';
+        while (queries.length < questionCount) queries.push(last);
+    }
+
+    return queries.slice(0, questionCount);
+}

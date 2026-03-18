@@ -2,6 +2,10 @@ import mammoth from "mammoth";
 import ExcelJS from "exceljs";
 import OfficeParser from "officeparser";
 import { extractPdfText } from "@/lib/pdf";
+import { writeFileSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { randomBytes } from "crypto";
 
 export type SupportedMimeType =
     | "application/pdf"
@@ -37,12 +41,20 @@ export async function extractText(buffer: Uint8Array, mimeType: string): Promise
         }
 
         case "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
-            return new Promise((resolve, reject) => {
-                OfficeParser.parseOffice(Buffer.from(buffer), (data, err) => {
-                    if (err) reject(err);
-                    else resolve(String(data));
-                }, { outputErrorToConsole: false });
-            });
+            // officeparser's types only accept a file path string, so write to a
+            // temp file, parse it, then clean up unconditionally.
+            const tmpPath = join(tmpdir(), `pptx-${randomBytes(8).toString("hex")}.pptx`);
+            writeFileSync(tmpPath, buffer);
+            try {
+                return await new Promise<string>((resolve, reject) => {
+                    OfficeParser.parseOffice(tmpPath, (data: string, err: Error) => {
+                        if (err) reject(err);
+                        else resolve(String(data));
+                    });
+                });
+            } finally {
+                unlinkSync(tmpPath);
+            }
         }
 
         case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {

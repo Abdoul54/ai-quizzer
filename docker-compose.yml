@@ -4,16 +4,15 @@ services:
     container_name: ai-quizzer-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-quizzer}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quizzer}
-      POSTGRES_DB: ${POSTGRES_DB:-ai_quizzer}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
+    # No ports — db is internal to the Docker network only
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quizzer} -d ${POSTGRES_DB:-ai_quizzer}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,8 +28,7 @@ services:
       --appendonly yes
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    # No ports — redis is internal to the Docker network only
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -41,20 +39,23 @@ services:
     image: dpage/pgadmin4:latest
     container_name: ai-quizzer-pgadmin
     restart: unless-stopped
+    ports:
+      - "5050:80"
     depends_on:
       db:
         condition: service_healthy
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:?PGADMIN_EMAIL is required}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD is required}
+      PGADMIN_CONFIG_SERVER_MODE: "True"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
-    ports:
-      - "5050:80"
+    # No public port — access via: docker exec or reverse proxy only.
+    # To reach it locally: docker compose port pgadmin 80
+    # or add a temporary port mapping in a docker-compose.override.yml
 
   migrate:
     build:
@@ -68,7 +69,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     command: npx drizzle-kit push
     restart: no
 
@@ -84,7 +85,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     command: npx tsx scripts/seed-user.ts
     restart: no
 
@@ -104,7 +105,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
     ports:
@@ -122,6 +123,8 @@ services:
       dockerfile: Dockerfile.worker
     container_name: ai-quizzer-worker
     restart: unless-stopped
+    ports:
+      - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
@@ -134,13 +137,14 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-quizzer}:${POSTGRES_PASSWORD:-quizzer}@db:5432/${POSTGRES_DB:-ai_quizzer}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       WORKER_HEALTH_PORT: 3001
-    ports:
-      - "3001:3001"
+      BULL_BOARD_USER: ${BULL_BOARD_USER:?BULL_BOARD_USER is required}
+      BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD:?BULL_BOARD_PASSWORD is required}
+    # No public port — health check runs inside the container
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001 || exit 1"]
       interval: 30s

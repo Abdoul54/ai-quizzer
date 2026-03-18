@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { quizQueue } from "@/lib/queue";
 import { apiLogger } from "@/lib/logger";
+import { quizCreateRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -42,6 +43,13 @@ export async function POST(req: NextRequest) {
     }
 
     const log = apiLogger("/api/quizzes POST", session.user.id);
+
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    const limited = await quizCreateRateLimit(session.user.id);
+    if (limited) {
+        log.warn("Quiz creation rate limit exceeded");
+        return limited;
+    }
 
     const body = await req.json();
     const parsed = createQuizSchema.safeParse(body);

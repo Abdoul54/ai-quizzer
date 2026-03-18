@@ -10,6 +10,7 @@ import { apiLogger } from "@/lib/logger";
 import { languageCodes } from "@/lib/languages";
 import { z } from "zod";
 import { redis } from "@/lib/redis";
+import { translateRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
     language: z.enum(languageCodes),
@@ -24,6 +25,13 @@ export async function POST(
 
     const { id: quizId } = await params;
     const log = apiLogger("/api/quizzes/[id]/translate POST", session.user.id);
+
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    const limited = await translateRateLimit(session.user.id);
+    if (limited) {
+        log.warn({ quizId }, "Translation rate limit exceeded");
+        return limited;
+    }
 
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);

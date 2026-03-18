@@ -7,6 +7,10 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { uploadLogger } from "@/lib/logger";
 import { UPLOAD_MAX_FILE_SIZE_BYTES, UPLOAD_MAX_FILE_SIZE_LABEL } from "@/lib/constants";
+import { uploadRateLimit } from "@/lib/rate-limit";
+
+// Embed this many chunks in parallel at once
+const EMBED_BATCH_SIZE = 10;
 
 export async function POST(req: Request) {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -16,6 +20,13 @@ export async function POST(req: Request) {
     }
 
     const log = uploadLogger(session.user.id);
+
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    const limited = await uploadRateLimit(session.user.id);
+    if (limited) {
+        log.warn("Upload rate limit exceeded");
+        return limited;
+    }
 
     try {
         const formData = await req.formData();
@@ -75,33 +86,37 @@ export async function POST(req: Request) {
 
         log.debug({ documentId: document.id }, "Document record created");
 
-        // 2. Chunk and embed
+        // 2. Chunk and embed in parallel batches
         const chunks = chunkText(text, 800);
         log.info({ documentId: document.id, chunkCount: chunks.length }, "Chunking complete, starting embeddings");
 
         const embedStart = Date.now();
-        let embeddedCount = 0;
 
-        for (const chunk of chunks) {
-            const { embedding } = await embed({
-                model: openai.embedding("text-embedding-3-small"),
-                value: chunk,
-            });
+        for (let i = 0; i < chunks.length; i += EMBED_BATCH_SIZE) {
+            const batch = chunks.slice(i, i + EMBED_BATCH_SIZE);
 
-            await db.insert(documentChunks).values({
-                documentId: document.id,
-                content: chunk,
-                embedding,
-            });
+            const embeddings = await Promise.all(
+                batch.map((chunk) =>
+                    embed({
+                        model: openai.embedding("text-embedding-3-small"),
+                        value: chunk,
+                    }).then((r) => r.embedding)
+                )
+            );
 
-            embeddedCount++;
+            await db.insert(documentChunks).values(
+                batch.map((chunk, j) => ({
+                    documentId: document.id,
+                    content: chunk,
+                    embedding: embeddings[j],
+                }))
+            );
         }
 
         log.info({
             documentId: document.id,
             fileName: file?.name ?? "manual-text",
             chunkCount: chunks.length,
-            embeddedCount,
             durationMs: Date.now() - embedStart,
         }, "Upload complete — all chunks embedded");
 
@@ -110,7 +125,7 @@ export async function POST(req: Request) {
 
     } catch (err) {
         log.error({ err }, "Upload failed");
-        return Response.json({ error: String(err) }, { status: 500 });
+        return Response.json({ error: "Upload failed. Please try again." }, { status: 500 });
     }
 }
 
