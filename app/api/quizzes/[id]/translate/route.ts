@@ -10,7 +10,6 @@ import { apiLogger } from "@/lib/logger";
 import { languageCodes } from "@/lib/languages";
 import { z } from "zod";
 import { redis } from "@/lib/redis";
-import { translateRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
     language: z.enum(languageCodes),
@@ -25,13 +24,6 @@ export async function POST(
 
     const { id: quizId } = await params;
     const log = apiLogger("/api/quizzes/[id]/translate POST", session.user.id);
-
-    // ── Rate limit ────────────────────────────────────────────────────────────
-    const limited = await translateRateLimit(session.user.id);
-    if (limited) {
-        log.warn({ quizId }, "Translation rate limit exceeded");
-        return limited;
-    }
 
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
@@ -50,24 +42,18 @@ export async function POST(
         return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    // ── Guards BEFORE any mutation ──────────────────────────────────────────
+    await db
+        .update(quiz)
+        .set({ languages: [...(quizRecord.languages ?? []), language] as any })
+        .where(eq(quiz.id, quizId));
+
     if (quizRecord.status !== "published") {
-        return NextResponse.json(
-            { error: "Quiz must be published before adding languages" },
-            { status: 400 }
-        );
+        return NextResponse.json({ error: "Quiz must be published before adding languages" }, { status: 400 });
     }
 
     if (quizRecord.languages?.includes(language as any)) {
         return NextResponse.json({ error: "Language already exists" }, { status: 409 });
     }
-    // ───────────────────────────────────────────────────────────────────────
-
-    // Optimistically add language to the quiz's languages array
-    await db
-        .update(quiz)
-        .set({ languages: [...(quizRecord.languages ?? []), language] as any })
-        .where(eq(quiz.id, quizId));
 
     const job = await translationQueue.add(
         "translate",
@@ -75,7 +61,7 @@ export async function POST(
         { jobId: `translate:${quizId}:${language}` }
     );
 
-    // Mark language as in-progress in Redis
+    // After enqueuing, mark language as in-progress
     await redis.sadd(`quiz:${quizId}:translating`, language);
 
     log.info({ quizId, language, jobId: job.id }, "Translation job enqueued");
