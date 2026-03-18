@@ -1,49 +1,64 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { documents } from '@/db/schema';
+import { documentChunks, documents } from '@/db/schema';
 import logger from '@/lib/logger';
 
 const toolLog = logger.child({ component: "tool", tool: "getDocumentOverview" });
 
 export const getDocumentOverview = tool({
     description:
-        'Fetches the full content of each document to understand its structure and topics. Always call this first before writing the architecture.',
+        'Fetches the first N chunks of each document in order to understand their structure and content. Always call this first before searching.',
     inputSchema: z.object({
         documentIds: z.array(z.string().uuid()),
+        chunksPerDocument: z.number().default(15),
     }),
-    execute: async ({ documentIds }) => {
+    execute: async ({ documentIds, chunksPerDocument }) => {
         if (!documentIds.length) {
             toolLog.warn("getDocumentOverview called with no documentIds");
             return 'RETRIEVAL_FAILED: No document IDs provided.';
         }
 
         const start = Date.now();
+        const allChunks: { fileName: string; content: string }[] = [];
 
-        const results = await db
-            .select({
-                content: documents.content,
-                fileName: documents.fileName,
-            })
-            .from(documents)
-            .where(inArray(documents.id, documentIds));
+        for (const documentId of documentIds) {
+            const result = await db
+                .select({
+                    content: documentChunks.content,
+                    fileName: documents.fileName,
+                })
+                .from(documentChunks)
+                .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+                .where(eq(documentChunks.documentId, documentId))
+                .orderBy(documentChunks.createdAt)
+                .limit(chunksPerDocument);
 
-        if (!results.length) {
+            toolLog.debug({
+                documentId,
+                chunksReturned: result.length,
+                chunksRequested: chunksPerDocument,
+            }, "Document overview fetched");
+
+            allChunks.push(...result);
+        }
+
+        if (!allChunks.length) {
             toolLog.warn({
                 documentIds,
                 durationMs: Date.now() - start,
-            }, "getDocumentOverview returned no documents");
-            return 'RETRIEVAL_FAILED: No documents found for the provided IDs.';
+            }, "getDocumentOverview returned no chunks — documents may not be processed yet");
+            return 'RETRIEVAL_FAILED: No chunks found for the provided document IDs. The documents may not have been processed yet.';
         }
 
         toolLog.debug({
-            documentCount: results.length,
-            totalChars: results.reduce((sum, r) => sum + r.content.length, 0),
+            documentCount: documentIds.length,
+            totalChunks: allChunks.length,
             durationMs: Date.now() - start,
         }, "getDocumentOverview completed");
 
-        return results
+        return allChunks
             .map(r => `[${r.fileName}]\n${r.content}`)
             .join('\n\n');
     },

@@ -11,7 +11,7 @@ import {
     SidebarRail,
 } from "@/components/ui/sidebar"
 import { Nav } from "./nav"
-import { ClipboardList } from "lucide-react"
+import { ClipboardList, Forward } from "lucide-react"
 import { User } from "./user"
 import { Logo } from "./logo"
 import { useUILanguage } from "@/providers/ui-language-provider"
@@ -30,6 +30,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: t("nav.quizzes"),
             url: "/quizzes",
             icon: ClipboardList,
+        },
+        {
+            title: t("nav.statement_forwarding"),
+            url: "/statement-forwarding",
+            icon: Forward,
         },
     ];
 

@@ -15,7 +15,6 @@
     "translation": "../../check-translations.sh lib/locales/"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.58",
     "@ai-sdk/mistral": "^3.0.20",
     "@ai-sdk/openai": "^3.0.29",
     "@ai-sdk/react": "^3.0.91",
@@ -56,7 +55,7 @@
     "mammoth": "^1.11.0",
     "media-chrome": "^4.17.2",
     "nanoid": "^5.1.6",
-    "next": "16.1.6",
+    "next": "^16.1.7",
     "next-themes": "^0.4.6",
     "officeparser": "^3.2.2",
     "openai": "^6.22.0",

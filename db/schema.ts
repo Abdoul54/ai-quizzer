@@ -16,7 +16,6 @@ import {
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export const languageEnum = pgEnum("language", languageCodes);
-export const defaultLanguageEnum = pgEnum("language", languageCodes);
 export const questionTypeEnum = pgEnum("question_type", ["true_false", "single_choice", "multiple_choice"]);
 export const quizDifficultyEnum = pgEnum("quiz_difficulty", ["easy", "medium", "hard"]);
 export const usageSourceEnum = pgEnum("usage_source", [
@@ -156,7 +155,7 @@ export const quiz = pgTable("quiz", {
     status: quizStatusEnum("status").default("draft").notNull(),
     questionTypes: questionTypeEnum("question_types").array().default([]),
     defaultLanguage: languageEnum("default_language").default("en"),
-    languages: defaultLanguageEnum('languages').array(),
+    languages: languageEnum('languages').array(),
     additionalPrompt: text("additional_prompt"),
     architecture: text("architecture"),
     errorMessage: text("error_message"),

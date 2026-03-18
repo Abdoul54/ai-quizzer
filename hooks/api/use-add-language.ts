@@ -14,12 +14,19 @@ export const useAddLanguage = (quizId: string) => {
             });
             if (!res.ok) throw new Error((await res.json()).error ?? "Failed to start translation.");
 
-            // Subscribe to SSE and wait for the worker to finish
+            // Pass language so the SSE route can do a fallback read from Redis
+            // if the worker finishes before this EventSource connection is established.
+            const statusUrl = `/api/quizzes/${quizId}/translate/status?language=${encodeURIComponent(language)}`;
+
             await new Promise<void>((resolve, reject) => {
-                const es = new EventSource(`/api/quizzes/${quizId}/translate/status`);
+                const es = new EventSource(statusUrl);
 
                 es.onmessage = (event) => {
-                    const data = JSON.parse(event.data) as { success: boolean; language?: string; error?: string };
+                    const data = JSON.parse(event.data) as {
+                        success: boolean;
+                        language?: string;
+                        error?: string;
+                    };
                     es.close();
                     if (data.success) resolve();
                     else reject(new Error(data.error ?? "Translation failed."));
