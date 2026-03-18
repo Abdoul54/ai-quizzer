@@ -25,6 +25,7 @@ export async function POST(
     const { id: quizId } = await params;
     const log = apiLogger("/api/quizzes/[id]/translate POST", session.user.id);
 
+
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
